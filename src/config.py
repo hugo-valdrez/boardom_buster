@@ -8,6 +8,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 class Settings(BaseSettings):
     PATHS: Dict[str, Path] = {}
     INGESTION: Dict[str, Any] = {}
+    ETL: Dict[str, Any] = {}
     ML: Dict[str, Any] = {}
 
     def __init__(self, **kwargs):
@@ -30,6 +31,8 @@ class Settings(BaseSettings):
         }
 
         self.INGESTION = config.get('ingestion', {})
+
+        self.ETL = config.get('etl', {})
 
         self.ML = config.get('ml', {})
 

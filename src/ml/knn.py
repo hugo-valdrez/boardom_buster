@@ -46,27 +46,6 @@ class KNNCandidateGenerator:
         >>> candidates = knn.get_candidates(game_id="12345")
     """
     
-    # Columns to exclude from feature vectors (used for re-ranking weights, not similarity)
-    EXCLUDED_COLUMNS = [
-        "id",
-        "thumbnail_url",
-        "image_url", 
-        "description",
-        "publication_year",
-        "min_playing_time",
-        "max_playing_time",
-        "name",
-        "num_ratings",
-        "avg_rating",
-        "stddev_rating",
-        "to_recommend",
-        # These are used for re-ranking weights
-        "playing_time",
-        "min_age",
-        "bayesian_avg_rating",
-        "popularity_score",
-    ]
-    
     def __init__(self):
         """Initialize the KNN candidate generator.
         
@@ -74,6 +53,13 @@ class KNNCandidateGenerator:
             config: KNNConfig instance. Uses defaults if None.
         """
         self.config = KNNConfig()
+        # Load excluded columns from settings
+        self.excluded_columns = _KNN_DEFAULTS.get("excluded_columns", [
+            "id", "thumbnail_url", "image_url", "description", "publication_year",
+            "min_playing_time", "max_playing_time", "name", "num_ratings",
+            "avg_rating", "stddev_rating", "to_recommend", "playing_time",
+            "min_age", "bayesian_avg_rating", "popularity_score"
+        ])
         self._model: Optional[NearestNeighbors] = None
         self._full_df: Optional[pl.DataFrame] = None  # All games (for input lookup)
         self._df: Optional[pl.DataFrame] = None  # Only recommendable games (for KNN)
@@ -132,7 +118,7 @@ class KNNCandidateGenerator:
         
         for col in df.columns:
             # Skip excluded columns
-            if col in self.EXCLUDED_COLUMNS:
+            if col in self.excluded_columns:
                 continue
             
             # Only include numeric columns

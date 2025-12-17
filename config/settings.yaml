@@ -15,11 +15,60 @@ ingestion:
   async_requests: 2
   max_consecutive_failures: 50
 
+etl:
+  consolidation:
+    filters:
+      num_ratings_threshold: 30
+      categories_threshold: 1000
+      mechanics_threshold: 81
+    
+    player_counts:
+      max_cap: 20
+    
+    popularity_score:
+      weight_owned: 2.0
+      weight_wanted: 1.0
+      weight_wished: 0.5
+    
+    column_types:
+      num_ratings: "int"
+      min_players: "int"
+      max_players: "int"
+      playing_time: "float"
+      min_age: "int"
+      avg_rating: "float"
+      bayesian_avg_rating: "float"
+      owned_by: "int"
+      wanted_by: "int"
+      wished_by: "int"
+      publication_year: "int"
+  
+  output:
+    base_filename: "bgg"
+    file_extension: ".parquet"
+
 ml:
   knn:
     n_neighbors: 50
     metric: "cosine"
     algorithm: "brute"
+    excluded_columns:
+      - "id"
+      - "thumbnail_url"
+      - "image_url"
+      - "description"
+      - "publication_year"
+      - "min_playing_time"
+      - "max_playing_time"
+      - "name"
+      - "num_ratings"
+      - "avg_rating"
+      - "stddev_rating"
+      - "to_recommend"
+      - "playing_time"
+      - "min_age"
+      - "bayesian_avg_rating"
+      - "popularity_score"
   
   reranker:
     weight_cosine_similarity: 0.30

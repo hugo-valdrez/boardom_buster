@@ -20,40 +20,45 @@ def consolidation():
     writer_reader = WriterReaderFactory.create_from_directory(raw_dir)
     raw_data = writer_reader.read()
 
+    # Load configuration
+    etl_config = settings.ETL["consolidation"]
+    filters = etl_config["filters"]
+    player_counts_config = etl_config["player_counts"]
+    popularity_config = etl_config["popularity_score"]
+    column_types = etl_config["column_types"]
+    output_config = settings.ETL["output"]
+
     transformations = [
-        Transform_ColumnTypes(columns={
-            "num_ratings": "int",
-            "min_players": "int",
-            "max_players": "int",
-            "playing_time": "float",
-            "min_age": "int",
-            "avg_rating": "float",
-            "bayesian_avg_rating": "float",
-            "owned_by": "int",
-            "wanted_by": "int",
-            "wished_by": "int",
-            "publication_year": "int"
-        }),
+        Transform_ColumnTypes(columns=column_types),
         
         # Add recommendation flag column (1 = recommend, 0 = don't recommend)
         Create_ConstantColumn(col="to_recommend", value=1),
         
         # Filter and flag based on ratings
         Filter_RowsNullEmpty(col="num_ratings"),
-        Update_ColumnByThreshold(col="num_ratings", threshold=30, filter_column="to_recommend", value=0),
+        Update_ColumnByThreshold(
+            col="num_ratings", 
+            threshold=filters["num_ratings_threshold"], 
+            filter_column="to_recommend", 
+            value=0
+        ),
         
         # Filter categories (list column)
         Filter_RowsNullEmpty(col="categories", is_list=True),
-        Filter_ListElements(col="categories", threshold=1000),
+        Filter_ListElements(col="categories", threshold=filters["categories_threshold"]),
         
         # Filter mechanics (list column)
         Filter_RowsNullEmpty(col="mechanics", is_list=True),
-        Filter_ListElements(col="mechanics", threshold=81),
+        Filter_ListElements(col="mechanics", threshold=filters["mechanics_threshold"]),
         
         # Process player counts
         Filter_RowsNullEmpty(col="min_players"),
         Filter_RowsNullEmpty(col="max_players"),
-        Create_PlayerCountColumns(min_col="min_players", max_col="max_players", max_cap=20),
+        Create_PlayerCountColumns(
+            min_col="min_players", 
+            max_col="max_players", 
+            max_cap=player_counts_config["max_cap"]
+        ),
         
         # Normalize playing time
         Filter_RowsNullEmpty(col="playing_time"),
@@ -69,7 +74,11 @@ def consolidation():
             owned_col="owned_by", 
             wanted_col="wanted_by", 
             wished_col="wished_by",
-            weights=(2.0, 1.0, 0.5), 
+            weights=(
+                popularity_config["weight_owned"],
+                popularity_config["weight_wanted"],
+                popularity_config["weight_wished"]
+            ), 
             filter_column="to_recommend", 
             value=1
         ),
@@ -83,7 +92,11 @@ def consolidation():
     processed_data = pipeline.run_transformations(raw_data)
 
     output_dir = settings.PATHS["processed_data"]
-    output_path = WriterReaderFactory.generate_output_path(output_dir, base_name="bgg", extension="parquet")
+    output_path = WriterReaderFactory.generate_output_path(
+        output_dir, 
+        base_name=output_config["base_filename"], 
+        extension=output_config["file_extension"]
+    )
     writer_reader.write(processed_data, output_path)
     
     return processed_data
