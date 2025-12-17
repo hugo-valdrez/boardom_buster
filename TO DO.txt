@@ -1,0 +1,1 @@
+- Add checkpoint for the API fetch.

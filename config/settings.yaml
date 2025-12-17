@@ -1,0 +1,16 @@
+paths:
+  raw_data: "data/raw"
+  processed_data: "data/processed"
+  logs: "logs"
+
+ingestion:
+  base_url: "https://boardgamegeek.com/xmlapi2"
+  endpoint: "/thing"
+  base_params:
+      type: "boardgame"
+      stats: 1
+  max_retries: 3
+  retry_delay: 5
+  batch_size: 20
+  async_requests: 2
+  max_consecutive_failures: 50
