@@ -53,7 +53,6 @@ class KNNCandidateGenerator:
             config: KNNConfig instance. Uses defaults if None.
         """
         self.config = KNNConfig()
-        # Load excluded columns from settings
         self.excluded_columns = _KNN_DEFAULTS.get("excluded_columns", [
             "id", "thumbnail_url", "image_url", "description", "publication_year",
             "min_playing_time", "max_playing_time", "name", "num_ratings",
