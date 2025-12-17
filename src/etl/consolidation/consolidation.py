@@ -8,9 +8,9 @@ from src.etl.consolidation.abstract.transformations import (
     PlayerCountsEncode,
     NormalizeColumn,
     PopularityScoreCreate,
+    OneHotEncodeListColumn
 )
 from src.other.abstract.write_reader_factory import WriterReaderFactory
-from pathlib import Path
 
 from src.config import settings
 
@@ -23,7 +23,6 @@ def consolidation():
     print(f"Reading from: {writer_reader.file_path}")
 
     transformations = [
-        # Cast string columns to proper numeric types
         CastColumns(columns={
             "num_ratings": "int",
             "min_players": "int",
@@ -75,6 +74,10 @@ def consolidation():
             filter_column="to_recommend", 
             value=1
         ),
+
+        OneHotEncodeListColumn(col="categories"),
+
+        OneHotEncodeListColumn(col="mechanics")
     ]
 
     pipeline = TransformationsManager(transformations=transformations)

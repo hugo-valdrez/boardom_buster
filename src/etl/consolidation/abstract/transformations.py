@@ -215,3 +215,29 @@ class AddColumn(BaseTransformation):
 
     def transform(self, df: pl.DataFrame) -> pl.DataFrame:
         return df.with_columns(pl.lit(self.value).alias(self.col))
+
+
+class OneHotEncodeListColumn(BaseTransformation):
+    """One-hot encodes a column containing lists of strings."""
+    
+    def __init__(self, col: str):
+        self.col = col
+
+    def transform(self, df: pl.DataFrame) -> pl.DataFrame:
+        unique_vals = (
+            df.select(pl.col(self.col).explode().unique().drop_nulls())
+            .get_column(self.col)
+            .sort()
+            .to_list()
+        )
+
+        expressions = [
+            pl.col(self.col)
+            .list.contains(val)
+            .cast(pl.Int64)
+            .alias(f"{self.col}_{val}") 
+            for val in unique_vals
+        ]
+
+        df = df.with_columns(expressions)
+        return df.drop(self.col)
