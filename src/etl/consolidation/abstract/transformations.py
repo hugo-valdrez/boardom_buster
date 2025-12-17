@@ -3,49 +3,92 @@ from src.etl.consolidation.abstract.base_transformation import BaseTransformatio
 
 import polars as pl
 
+
 class TransformationsManager:
+    """Manages and executes a pipeline of transformations on a DataFrame."""
+    
     def __init__(self, transformations: List[BaseTransformation]):
         self.transformations = transformations
 
     def run_transformations(self, df: pl.DataFrame) -> pl.DataFrame:
-        for tranformation in self.transformations:
-            df = tranformation.transform(df)
-
+        """Execute all transformations in sequence."""
+        for transformation in self.transformations:
+            df = transformation.transform(df)
         return df
 
-class emptynull_Filter(BaseTransformation):
-    def __init__(self, col: str):
+
+class CastColumns(BaseTransformation):
+    """Cast columns to specified data types."""
+    
+    TYPE_MAP = {
+        "int": pl.Int64,
+        "float": pl.Float64,
+        "str": pl.Utf8,
+        "bool": pl.Boolean,
+    }
+    
+    def __init__(self, columns: dict[str, str]):
+        """
+        Args:
+            columns: Dict mapping column names to target types.
+                     Types: 'int', 'float', 'str', 'bool'
+        """
+        self.columns = columns
+
+    def transform(self, df: pl.DataFrame) -> pl.DataFrame:
+        cast_exprs = []
+        for col_name, type_name in self.columns.items():
+            if type_name not in self.TYPE_MAP:
+                raise ValueError(f"Unknown type '{type_name}'. Valid types: {list(self.TYPE_MAP.keys())}")
+            target_type = self.TYPE_MAP[type_name]
+            cast_exprs.append(pl.col(col_name).cast(target_type, strict=False).alias(col_name))
+        
+        return df.with_columns(cast_exprs)
+
+
+class EmptyNullFilter(BaseTransformation):
+    """Filter out rows where a column is null or empty (for list columns)."""
+    
+    def __init__(self, col: str, is_list: bool = False):
         self.col = col
+        self.is_list = is_list
 
-    def transform(self, df: pl.Dataframe, ) -> List[str]:
-        df_filtered = df.filter(
-            pl.col(self.col).is_not_null() & 
-            pl.col(self.col).list.len() > 0
-        )
+    def transform(self, df: pl.DataFrame) -> pl.DataFrame:
+        if self.is_list:
+            return df.filter(
+                pl.col(self.col).is_not_null() & 
+                (pl.col(self.col).list.len() > 0)
+            )
+        return df.filter(pl.col(self.col).is_not_null())
 
-        return df_filtered
 
-class threshold_column_Filter(BaseTransformation):
-    def __init__(self, target_col: str, threshold: float, filter_column: str, value: Any):
-        self.target_col = target_col
+class ThresholdColumnFilter(BaseTransformation):
+    """Set a filter column value based on whether a target column meets a threshold."""
+    
+    def __init__(self, col: str, threshold: float, filter_column: str, value: Any):
+        self.col = col
         self.threshold = threshold
         self.filter_column = filter_column
         self.value = value
 
     def transform(self, df: pl.DataFrame) -> pl.DataFrame:
         return df.with_columns(
-            pl.when(pl.col(self.target_col) >= self.threshold)
+            pl.when(pl.col(self.col) >= self.threshold)
             .then(pl.lit(self.value))
             .otherwise(pl.col(self.filter_column)) 
             .alias(self.filter_column)
         )
+
+
+class ThresholdListElementFilter(BaseTransformation):
+    """Filter list elements that appear less than threshold times across the dataset."""
     
-class threshold_listelement_Filter(BaseTransformation):
     def __init__(self, col: str, threshold: int):
         self.col = col
         self.threshold = threshold
 
-    def transform(self, df: pl.DataFrame) -> List[str]:
+    def transform(self, df: pl.DataFrame) -> pl.DataFrame:
+        # Find values that appear >= threshold times
         valid = (
             df.explode(self.col)
             .group_by(self.col)
@@ -54,49 +97,47 @@ class threshold_listelement_Filter(BaseTransformation):
             .select(self.col)
         )
 
+        # Keep original columns and filter list elements
+        df_with_idx = df.with_row_index("__row_id")
+        other_cols = [c for c in df.columns if c != self.col]
+        
         df_clean = (
-            df.with_row_index("row_id")
+            df_with_idx
             .explode(self.col)        
-            .join(
-                valid, 
-                on=self.col, 
-                how="inner"           
-            )
-            .group_by("row_id")       
-            .agg(pl.col(self.col))         
-            .drop("row_id")          
+            .join(valid, on=self.col, how="inner")
+            .group_by("__row_id")       
+            .agg([pl.col(self.col)] + [pl.col(c).first() for c in other_cols])
+            .drop("__row_id")
         )
         
         return df_clean
 
-class playercounts_Encode(BaseTransformation):
+
+class PlayerCountsEncode(BaseTransformation):
+    """One-hot encode player counts from min/max player columns."""
+    
     def __init__(self, min_col: str, max_col: str, max_cap: int):
         self.min_col = min_col
         self.max_col = max_col
         self.max_cap = max_cap
 
     def transform(self, df: pl.DataFrame) -> pl.DataFrame:
-        expressions = []
-        for i in range(1, self.max_cap + 1):
-            expr = (
-                pl.when((pl.col(self.min_col) <= i) & (pl.col(self.max_col) >= i))
-                .then(1)
-                .otherwise(0)
-                .alias(f"players_{i}")
-            )
-            expressions.append(expr)
-
+        expressions = [
+            pl.when((pl.col(self.min_col) <= i) & (pl.col(self.max_col) >= i))
+            .then(1)
+            .otherwise(0)
+            .alias(f"players_{i}")
+            for i in range(1, self.max_cap + 1)
+        ]
         return df.with_columns(expressions).drop([self.min_col, self.max_col])
 
 
-import polars as pl
-from typing import Any
-
-class popularityscore_Create(BaseTransformation):
+class PopularityScoreCreate(BaseTransformation):
+    """Create a normalized popularity score from owned/wanted/wished columns."""
+    
     def __init__(self, owned_col: str, wanted_col: str, wished_col: str, 
                  filter_column: str, value: Any,
                  weights: tuple = (1.0, 2.0, 0.5)):
-        
         self.owned_col = owned_col
         self.wanted_col = wanted_col
         self.wished_col = wished_col
@@ -113,17 +154,17 @@ class popularityscore_Create(BaseTransformation):
             (pl.col(self.wished_col) * w_wished)
         )
 
-        df = df.with_columns(raw_expr.alias("raw_popularity"))
+        df = df.with_columns(raw_expr.alias("__raw_popularity"))
 
         condition = pl.col(self.filter_column) == self.value
 
-        subset_min = pl.col("raw_popularity").filter(condition).min()
-        subset_max = pl.col("raw_popularity").filter(condition).max()
+        subset_min = pl.col("__raw_popularity").filter(condition).min()
+        subset_max = pl.col("__raw_popularity").filter(condition).max()
         
         norm_calc = (
             pl.when(subset_min == subset_max)
             .then(0.0)
-            .otherwise((pl.col("raw_popularity") - subset_min) / (subset_max - subset_min))
+            .otherwise((pl.col("__raw_popularity") - subset_min) / (subset_max - subset_min))
         )
 
         df = df.with_columns(
@@ -132,12 +173,14 @@ class popularityscore_Create(BaseTransformation):
             .otherwise(None) 
             .alias("popularity_score")
         )
-        cols_to_drop = ["raw_popularity"]
-        cols_to_drop.extend([self.owned_col, self.wanted_col, self.wished_col])
         
+        cols_to_drop = ["__raw_popularity", self.owned_col, self.wanted_col, self.wished_col]
         return df.drop(cols_to_drop)
 
-class normalizecolumn_Transformation(BaseTransformation):
+
+class NormalizeColumn(BaseTransformation):
+    """Normalize a column to 0-1 range for rows matching a filter condition."""
+    
     def __init__(self, col: str, filter_column: str, value: Any):
         self.col = col
         self.filter_column = filter_column
@@ -161,13 +204,14 @@ class normalizecolumn_Transformation(BaseTransformation):
             .otherwise(pl.col(self.col))
             .alias(self.col)
         )
+
+
+class AddColumn(BaseTransformation):
+    """Add a new column with a constant value."""
     
-class newcolumn_value_Add(BaseTransformation):
-    def __init__(self, column_name: str, value: Any):
-        self.column_name = column_name
+    def __init__(self, col: str, value: Any):
+        self.col = col
         self.value = value
 
     def transform(self, df: pl.DataFrame) -> pl.DataFrame:
-        return df.with_columns(
-            pl.lit(self.value).alias(self.column_name)
-        )
+        return df.with_columns(pl.lit(self.value).alias(self.col))
