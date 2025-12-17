@@ -1,0 +1,5 @@
+.venv
+.logs/*
+
+TO DO.txt
+other.ipynb
