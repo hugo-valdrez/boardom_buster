@@ -26,12 +26,11 @@ class Settings(BaseSettings):
         self.PATHS = {
             "raw_data": PROJECT_ROOT / config['paths']['raw_data'],
             "processed_data": PROJECT_ROOT / config['paths']['processed_data'],
-            # "model_artifact": PROJECT_ROOT / config['paths']['model_artifact'],
             "logs": PROJECT_ROOT / config['paths']['logs']
         }
 
         self.INGESTION = config.get('ingestion', {})
 
-        # self.ML = config.get('ml', {})
+        self.ML = config.get('ml', {})
 
 settings = Settings()

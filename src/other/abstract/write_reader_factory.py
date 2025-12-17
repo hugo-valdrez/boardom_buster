@@ -17,11 +17,6 @@ class WriterReaderFactory:
     DATE_PATTERN = re.compile(r"^(\d{8})_(.+)$")
 
     @classmethod
-    def register(cls, extension: str, writer_reader_class: Type[BaseWriterReader]) -> None:
-        """Register a new writer/reader class for a file extension."""
-        cls._registry[extension.lower()] = writer_reader_class
-
-    @classmethod
     def get_supported_extensions(cls) -> list[str]:
         """Return list of supported file extensions."""
         return list(cls._registry.keys())
@@ -57,14 +52,13 @@ class WriterReaderFactory:
         cls, 
         directory: Path, 
         base_name: str = "bgg", 
-        extension: str = ".parquet",
-        date: Optional[datetime] = None
+        extension: str = ".parquet"
     ) -> Path:
         """Generate an output file path with current date.
         
         Returns path like: directory/YYYYMMDD_name.extension
         """
-        date = date or datetime.now()
+        date = datetime.now()
         date_str = date.strftime("%Y%m%d")
         filename = f"{date_str}_{base_name}{extension}"
         return directory / filename

@@ -14,3 +14,17 @@ ingestion:
   batch_size: 20
   async_requests: 2
   max_consecutive_failures: 50
+
+ml:
+  knn:
+    n_neighbors: 50
+    metric: "cosine"
+    algorithm: "brute"
+  
+  reranker:
+    weight_cosine_similarity: 0.30
+    weight_year_similarity: 0.10
+    weight_playing_time_similarity: 0.15
+    weight_bayesian_rating: 0.25
+    weight_popularity: 0.20
+    top_k: 5

@@ -21,6 +21,6 @@ class ParquetWriterReader(BaseWriterReader):
     
     def write(self, df: pl.DataFrame, file_path: Optional[Path] = None) -> None:
         """Write data to a parquet file. Uses original path if no path specified."""
-        output_path = file_path or self.file_path
+        output_path = file_path
         output_path.parent.mkdir(parents=True, exist_ok=True)
         df.write_parquet(output_path)
