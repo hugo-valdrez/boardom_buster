@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Union
 
 import polars as pl
 
@@ -82,6 +82,7 @@ class Columns:
     PUBLICATION_YEAR = "publication_year"
     PLAYING_TIME = "playing_time"
     BAYESIAN_RATING = "bayesian_avg_rating"
+    AVG_RATING = "avg_rating"
     POPULARITY_SCORE = "popularity_score"
     
     # Output columns (normalized relative to input game)
@@ -157,10 +158,16 @@ class ReRanker:
     def _extract_features(self, game: pl.DataFrame) -> dict:
         """Extract feature values from a game row."""
         row = game.row(0, named=True)
+        
+        # Use bayesian_avg_rating if available (and non-zero), fall back to avg_rating
+        rating = row.get(Columns.BAYESIAN_RATING)
+        if rating is None or rating == 0:
+            rating = row.get(Columns.AVG_RATING)
+
         return {
             Columns.PUBLICATION_YEAR: row.get(Columns.PUBLICATION_YEAR),
             Columns.PLAYING_TIME: row.get(Columns.PLAYING_TIME),
-            Columns.BAYESIAN_RATING: row.get(Columns.BAYESIAN_RATING),
+            Columns.BAYESIAN_RATING: rating,
             Columns.POPULARITY_SCORE: row.get(Columns.POPULARITY_SCORE),
         }
     
@@ -175,7 +182,11 @@ class ReRanker:
         
         input_year = input_features.get(Columns.PUBLICATION_YEAR)
         input_time = input_features.get(Columns.PLAYING_TIME)
-        input_rating = input_features.get(Columns.BAYESIAN_RATING)
+        input_rating_expr = (
+            pl.when(pl.col(Columns.BAYESIAN_RATING).is_not_null() & (pl.col(Columns.BAYESIAN_RATING) != 0))
+            .then(pl.col(Columns.BAYESIAN_RATING))
+            .otherwise(pl.col(Columns.AVG_RATING))
+        )
         input_popularity = input_features.get(Columns.POPULARITY_SCORE)
         
         # Get min/max from candidates for normalization
@@ -184,8 +195,8 @@ class ReRanker:
             pl.col(Columns.PUBLICATION_YEAR).max().alias("year_max"),
             pl.col(Columns.PLAYING_TIME).min().alias("time_min"),
             pl.col(Columns.PLAYING_TIME).max().alias("time_max"),
-            pl.col(Columns.BAYESIAN_RATING).min().alias("rating_min"),
-            pl.col(Columns.BAYESIAN_RATING).max().alias("rating_max"),
+            input_rating_expr.min().alias("rating_min"),
+            input_rating_expr.max().alias("rating_max"),
             pl.col(Columns.POPULARITY_SCORE).min().alias("pop_min"),
             pl.col(Columns.POPULARITY_SCORE).max().alias("pop_max"),
             pl.col(Columns.COSINE_DISTANCE).min().alias("dist_min"),
@@ -214,7 +225,7 @@ class ReRanker:
             
             # Bayesian rating: normalize to [0, 1] within candidates
             self._normalize_expr(
-                Columns.BAYESIAN_RATING,
+                input_rating_expr,
                 stats["rating_min"],
                 stats["rating_max"]
             ).alias(Columns.NORM_BAYESIAN_RATING),
@@ -249,19 +260,21 @@ class ReRanker:
     
     def _normalize_expr(
         self,
-        col_name: str,
+        expr_or_name: Union[str, pl.Expr], # Updated type hint
         min_val: Optional[float],
         max_val: Optional[float]
     ) -> pl.Expr:
         """Create expression for min-max normalization to [0, 1]."""
         if min_val is None or max_val is None:
             return pl.lit(0.5)
-        
+
         range_val = max_val - min_val
         if range_val == 0:
             return pl.lit(0.5)
-        
-        return ((pl.col(col_name) - min_val) / range_val).clip(0.0, 1.0)
+
+        col_expr = pl.col(expr_or_name) if isinstance(expr_or_name, str) else expr_or_name
+
+        return ((col_expr - min_val) / range_val).clip(0.0, 1.0)
     
     def _compute_final_score(self, df: pl.DataFrame) -> pl.DataFrame:
         """Compute weighted final score for each candidate."""
