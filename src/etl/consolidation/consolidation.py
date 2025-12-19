@@ -72,6 +72,7 @@ def consolidation():
         
         # Filter ratings and create popularity score
         Filter_RowsNullEmpty(col="bayesian_avg_rating"),
+        Filter_RowsNullEmpty(col="avg_rating"),
         Create_PopularityScore(
             owned_col="owned_by", 
             wanted_col="wanted_by", 

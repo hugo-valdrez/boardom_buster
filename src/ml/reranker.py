@@ -22,14 +22,14 @@ class ReRankerConfig:
         weight_cosine_similarity: Weight for KNN cosine similarity
         weight_year_similarity: Weight for publication year similarity
         weight_playing_time_similarity: Weight for playing time similarity
-        weight_bayesian_rating: Weight for bayesian average rating
+        weight_rating: Weight for rating (uses bayesian if available, otherwise average)
         weight_popularity: Weight for popularity score
         top_k: Number of recommendations to return
     """
     weight_cosine_similarity: float = _RERANKER_DEFAULTS.get("weight_cosine_similarity", 0.30)
     weight_year_similarity: float = _RERANKER_DEFAULTS.get("weight_year_similarity", 0.10)
     weight_playing_time_similarity: float = _RERANKER_DEFAULTS.get("weight_playing_time_similarity", 0.15)
-    weight_bayesian_rating: float = _RERANKER_DEFAULTS.get("weight_bayesian_rating", 0.25)
+    weight_rating: float = _RERANKER_DEFAULTS.get("weight_rating", 0.25)
     weight_popularity: float = _RERANKER_DEFAULTS.get("weight_popularity", 0.20)
     top_k: int = _RERANKER_DEFAULTS.get("top_k", 5)
     
@@ -39,7 +39,7 @@ class ReRankerConfig:
             self.weight_cosine_similarity,
             self.weight_year_similarity,
             self.weight_playing_time_similarity,
-            self.weight_bayesian_rating,
+            self.weight_rating,
             self.weight_popularity,
         ]
         if any(w < 0 for w in weights):
@@ -54,7 +54,7 @@ class ReRankerConfig:
             weight_cosine_similarity=config.get("weight_cosine_similarity", 0.30),
             weight_year_similarity=config.get("weight_year_similarity", 0.10),
             weight_playing_time_similarity=config.get("weight_playing_time_similarity", 0.15),
-            weight_bayesian_rating=config.get("weight_bayesian_rating", 0.25),
+            weight_rating=config.get("weight_rating", 0.25),
             weight_popularity=config.get("weight_popularity", 0.20),
             top_k=config.get("top_k", 5),
         )
@@ -65,7 +65,7 @@ class ReRankerConfig:
             "weight_cosine_similarity": self.weight_cosine_similarity,
             "weight_year_similarity": self.weight_year_similarity,
             "weight_playing_time_similarity": self.weight_playing_time_similarity,
-            "weight_bayesian_rating": self.weight_bayesian_rating,
+            "weight_rating": self.weight_rating,
             "weight_popularity": self.weight_popularity,
             "top_k": self.top_k,
         }
@@ -89,7 +89,7 @@ class Columns:
     COSINE_SIMILARITY = "cosine_similarity"
     NORM_YEAR_SIMILARITY = "normalized_year_similarity"
     NORM_PLAYING_TIME_SIMILARITY = "normalized_playing_time_similarity"
-    NORM_BAYESIAN_RATING = "normalized_bayesian_rating"
+    NORM_AVG_RATING = "normalized_avg_rating"
     NORM_POPULARITY = "normalized_popularity"
     FINAL_SCORE = "final_score"
 
@@ -161,7 +161,7 @@ class ReRanker:
         
         # Use bayesian_avg_rating if available (and non-zero), fall back to avg_rating
         rating = row.get(Columns.BAYESIAN_RATING)
-        if rating is None or rating == 0:
+        if rating == 0:
             rating = row.get(Columns.AVG_RATING)
 
         return {
@@ -229,7 +229,7 @@ class ReRanker:
                 input_rating_expr,
                 stats["rating_min"],
                 stats["rating_max"]
-            ).alias(Columns.NORM_BAYESIAN_RATING),
+            ).alias(Columns.NORM_AVG_RATING),
             
             # Popularity score: normalize to [0, 1] within candidates
             self._normalize_expr(
@@ -283,7 +283,7 @@ class ReRanker:
             pl.col(Columns.COSINE_SIMILARITY) * self.config.weight_cosine_similarity +
             pl.col(Columns.NORM_YEAR_SIMILARITY) * self.config.weight_year_similarity +
             pl.col(Columns.NORM_PLAYING_TIME_SIMILARITY) * self.config.weight_playing_time_similarity +
-            pl.col(Columns.NORM_BAYESIAN_RATING) * self.config.weight_bayesian_rating +
+            pl.col(Columns.NORM_AVG_RATING) * self.config.weight_rating +
             pl.col(Columns.NORM_POPULARITY) * self.config.weight_popularity
         )
         
@@ -298,7 +298,7 @@ class ReRanker:
             Columns.COSINE_SIMILARITY,
             Columns.NORM_YEAR_SIMILARITY,
             Columns.NORM_PLAYING_TIME_SIMILARITY,
-            Columns.NORM_BAYESIAN_RATING,
+            Columns.NORM_AVG_RATING,
             Columns.NORM_POPULARITY,
         ]
     
@@ -311,7 +311,7 @@ class ReRanker:
             Columns.COSINE_SIMILARITY: pl.Series([], dtype=pl.Float64),
             Columns.NORM_YEAR_SIMILARITY: pl.Series([], dtype=pl.Float64),
             Columns.NORM_PLAYING_TIME_SIMILARITY: pl.Series([], dtype=pl.Float64),
-            Columns.NORM_BAYESIAN_RATING: pl.Series([], dtype=pl.Float64),
+            Columns.NORM_AVG_RATING: pl.Series([], dtype=pl.Float64),
             Columns.NORM_POPULARITY: pl.Series([], dtype=pl.Float64),
         })
     
@@ -328,7 +328,7 @@ class ReRanker:
             (Columns.COSINE_SIMILARITY, "Similarity"),
             (Columns.NORM_YEAR_SIMILARITY, "Year Match"),
             (Columns.NORM_PLAYING_TIME_SIMILARITY, "Time Match"),
-            (Columns.NORM_BAYESIAN_RATING, "Rating"),
+            (Columns.NORM_AVG_RATING, "Rating"),
             (Columns.NORM_POPULARITY, "Popularity"),
         ]
         

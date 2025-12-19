@@ -76,6 +76,6 @@ ml:
     weight_cosine_similarity: 0.30
     weight_year_similarity: 0.10
     weight_playing_time_similarity: 0.15
-    weight_bayesian_rating: 0.25
+    weight_rating: 0.25
     weight_popularity: 0.20
     top_k: 5
