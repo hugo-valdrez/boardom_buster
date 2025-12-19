@@ -187,8 +187,7 @@ class ReRanker:
             .then(pl.col(Columns.BAYESIAN_RATING))
             .otherwise(pl.col(Columns.AVG_RATING))
         )
-        input_popularity = input_features.get(Columns.POPULARITY_SCORE)
-        
+    
         # Get min/max from candidates for normalization
         stats = candidates.select([
             pl.col(Columns.PUBLICATION_YEAR).min().alias("year_min"),
@@ -202,7 +201,9 @@ class ReRanker:
             pl.col(Columns.COSINE_DISTANCE).min().alias("dist_min"),
             pl.col(Columns.COSINE_DISTANCE).max().alias("dist_max"),
         ]).row(0, named=True)
-        
+
+        print(stats["time_min"], stats["time_max"])
+
         return candidates.with_columns([
             # Cosine similarity: 1 - distance (already in [0, 1] for normalized vectors)
             (1.0 - pl.col(Columns.COSINE_DISTANCE)).alias(Columns.COSINE_SIMILARITY),

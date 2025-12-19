@@ -234,6 +234,21 @@ class Transform_NormalizeColumn(BaseTransformation):
             .alias(self.col)
         )
 
+class Transform_ClipValues(BaseTransformation):
+    def __init__(self, col: str, min_val: float = None, max_val: float = None):
+        """
+        Clips values to stay within a specific range.
+        Any value above max_val becomes max_val.
+        Any value below min_val becomes min_val.
+        """
+        self.col = col
+        self.min_val = min_val
+        self.max_val = max_val
+
+    def transform(self, df: pl.DataFrame) -> pl.DataFrame:
+        return df.with_columns(
+            pl.col(self.col).clip(lower_bound=self.min_val, upper_bound=self.max_val)
+        )
 
 # ============================================================================
 # UPDATE TRANSFORMATIONS - Conditionally modify values in existing columns

@@ -8,7 +8,8 @@ from src.etl.consolidation.abstract.transformations import (
     Create_PlayerCountColumns,
     Transform_NormalizeColumn,
     Create_PopularityScore,
-    Create_OneHotFromList
+    Create_OneHotFromList,
+    Transform_ClipValues
 )
 from src.other.abstract.write_reader_factory import WriterReaderFactory
 
@@ -62,7 +63,8 @@ def consolidation():
         
         # Normalize playing time
         Filter_RowsNullEmpty(col="playing_time"),
-        Transform_NormalizeColumn(col="playing_time", filter_column="to_recommend", value=1),
+        Transform_ClipValues(col="playing_time", min_val=filters["min_playing_time"], max_val=filters["max_playing_time"]),
+        # Transform_NormalizeColumn(col="playing_time", filter_column="to_recommend", value=1),
         
         # Normalize min age
         Filter_RowsNullEmpty(col="min_age"),
