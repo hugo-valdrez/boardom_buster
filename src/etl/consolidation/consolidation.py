@@ -9,7 +9,8 @@ from src.etl.consolidation.abstract.transformations import (
     Transform_NormalizeColumn,
     Create_PopularityScore,
     Create_OneHotFromList,
-    Transform_ClipValues
+    Transform_ClipValues,
+    Create_DescriptionEmbedding
 )
 from src.other.abstract.write_reader_factory import WriterReaderFactory
 
@@ -88,7 +89,10 @@ def consolidation():
 
         Create_OneHotFromList(col="categories"),
 
-        Create_OneHotFromList(col="mechanics")
+        Create_OneHotFromList(col="mechanics"),
+
+        # Embed game descriptions for semantic similarity comparisons
+        Create_DescriptionEmbedding(col="description")
     ]
 
     pipeline = TransformationsManager(transformations=transformations)
