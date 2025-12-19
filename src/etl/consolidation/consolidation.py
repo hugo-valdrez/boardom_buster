@@ -89,10 +89,8 @@ def consolidation():
 
         Create_OneHotFromList(col="categories"),
 
-        Create_OneHotFromList(col="mechanics"),
-
-        # Embed game descriptions for semantic similarity comparisons
-        Create_DescriptionEmbedding(col="description")
+        Create_OneHotFromList(col="mechanics")
+        
     ]
 
     pipeline = TransformationsManager(transformations=transformations)

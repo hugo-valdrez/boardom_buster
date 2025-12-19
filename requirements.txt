@@ -5,4 +5,3 @@ pydantic-settings
 PyYAML
 scikit-learn
 streamlit
-sentence-transformers
