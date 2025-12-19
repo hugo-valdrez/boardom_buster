@@ -207,7 +207,7 @@ marimo/_lsp/
 __marimo__/
 
 # Other
-data/processed/*
+# data/processed/*
 data/raw/*
 other.ipynb
 TO DO.txt
