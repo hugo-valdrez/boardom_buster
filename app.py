@@ -105,10 +105,25 @@ def main():
                 
                 with col1:
                     st.markdown(f"**{i}. {row['name']}**")
+                    
+                    # Score breakdown
+                    similarity = row.get("cosine_similarity", 0)
+                    year_sim = row.get("normalized_year_similarity", 0)
+                    time_sim = row.get("normalized_playing_time_similarity", 0)
+                    rating = row.get("normalized_avg_rating", 0)
+                    popularity = row.get("normalized_popularity", 0)
+                    
+                    st.caption(
+                        f"🎯 Similarity: {similarity:.0%} · "
+                        f"📅 Year: {year_sim:.0%} · "
+                        f"⏱️ Time: {time_sim:.0%} · "
+                        f"⭐ Rating: {rating:.0%} · "
+                        f"🔥 Popularity: {popularity:.0%}"
+                    )
                 
                 with col2:
                     score = row.get("final_score", row.get("cosine_similarity", 0))
-                    st.caption(f"Score: {score:.2f}")
+                    st.metric("Score", f"{score:.2f}")
                     
         except Exception as e:
             st.error(f"Error getting recommendations: {e}")
