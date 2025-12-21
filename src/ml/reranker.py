@@ -118,7 +118,8 @@ class ReRanker:
     def rerank(
         self, 
         input_game: pl.DataFrame, 
-        candidates: pl.DataFrame
+        candidates: pl.DataFrame,
+        top_k: str
     ) -> pl.DataFrame:
         """Re-rank KNN candidates and return top-k recommendations.
         
@@ -128,13 +129,9 @@ class ReRanker:
         
         Returns:
             DataFrame with top-k recommendations, sorted by final_score descending.
-            Includes all normalized feature columns for radar visualization.
         """
         if input_game.height != 1:
             raise ValueError(f"input_game must have exactly 1 row, got {input_game.height}")
-        
-        if candidates.height == 0:
-            return self._empty_result()
         
         # Extract input game feature values
         input_features = self._extract_features(input_game)
@@ -149,7 +146,7 @@ class ReRanker:
         result = (
             scored
             .sort(Columns.FINAL_SCORE, descending=True)
-            .head(self.config.top_k)
+            .head(top_k)
             .select(self._output_columns())
         )
         
@@ -173,12 +170,6 @@ class ReRanker:
     
     def _compute_scores(self, candidates: pl.DataFrame, input_features: dict) -> pl.DataFrame:
         """Compute normalized scores for all candidates relative to input game."""
-        
-        # Convert cosine distance to similarity: similarity = 1 - distance
-        # Cosine distance is in [0, 2], so similarity is in [-1, 1]
-        # We normalize to [0, 1] by: (1 - distance + 1) / 2 = (2 - distance) / 2
-        # Or simpler: since distance is typically [0, 1] for normalized vectors, 
-        # similarity = 1 - distance is already [0, 1]
         
         input_year = input_features.get(Columns.PUBLICATION_YEAR)
         input_time = input_features.get(Columns.PLAYING_TIME)
@@ -205,7 +196,7 @@ class ReRanker:
         print(stats["time_min"], stats["time_max"])
 
         return candidates.with_columns([
-            # Cosine similarity: 1 - distance (already in [0, 1] for normalized vectors)
+            # Convert cosine distance to similarity: similarity = 1 - distance
             (1.0 - pl.col(Columns.COSINE_DISTANCE)).alias(Columns.COSINE_SIMILARITY),
             
             # Year similarity: 1 - |candidate_year - input_year| / max_diff
@@ -224,7 +215,7 @@ class ReRanker:
                 stats["time_max"]
             ).alias(Columns.NORM_PLAYING_TIME_SIMILARITY),
             
-            # Bayesian rating: normalize to [0, 1] within candidates
+            # Rating: normalize to [0, 1] within candidates
             self._normalize_expr(
                 input_rating_expr,
                 stats["rating_min"],
@@ -247,9 +238,6 @@ class ReRanker:
         max_val: Optional[float]
     ) -> pl.Expr:
         """Create expression for similarity score (1 - normalized absolute difference)."""
-        if input_value is None or min_val is None or max_val is None:
-            return pl.lit(0.5)  # Default to neutral score if data missing
-        
         max_diff = max_val - min_val
         if max_diff == 0:
             return pl.lit(1.0)  # All same value = perfect similarity
@@ -266,9 +254,6 @@ class ReRanker:
         max_val: Optional[float]
     ) -> pl.Expr:
         """Create expression for min-max normalization to [0, 1]."""
-        if min_val is None or max_val is None:
-            return pl.lit(0.5)
-
         range_val = max_val - min_val
         if range_val == 0:
             return pl.lit(0.5)
@@ -301,47 +286,3 @@ class ReRanker:
             Columns.NORM_AVG_RATING,
             Columns.NORM_POPULARITY,
         ]
-    
-    def _empty_result(self) -> pl.DataFrame:
-        """Return empty DataFrame with correct schema."""
-        return pl.DataFrame({
-            Columns.GAME_ID: pl.Series([], dtype=pl.Utf8),
-            "name": pl.Series([], dtype=pl.Utf8),
-            Columns.FINAL_SCORE: pl.Series([], dtype=pl.Float64),
-            Columns.COSINE_SIMILARITY: pl.Series([], dtype=pl.Float64),
-            Columns.NORM_YEAR_SIMILARITY: pl.Series([], dtype=pl.Float64),
-            Columns.NORM_PLAYING_TIME_SIMILARITY: pl.Series([], dtype=pl.Float64),
-            Columns.NORM_AVG_RATING: pl.Series([], dtype=pl.Float64),
-            Columns.NORM_POPULARITY: pl.Series([], dtype=pl.Float64),
-        })
-    
-    def get_radar_data(self, recommendations: pl.DataFrame) -> list[dict]:
-        """Convert recommendations to radar chart compatible format.
-        
-        Returns a list of dicts, each containing:
-        - game_id: The game identifier
-        - scores: Dict mapping feature names to normalized [0, 1] values
-        
-        This format is designed for future radar/hexagon visualization.
-        """
-        radar_features = [
-            (Columns.COSINE_SIMILARITY, "Similarity"),
-            (Columns.NORM_YEAR_SIMILARITY, "Year Match"),
-            (Columns.NORM_PLAYING_TIME_SIMILARITY, "Time Match"),
-            (Columns.NORM_AVG_RATING, "Rating"),
-            (Columns.NORM_POPULARITY, "Popularity"),
-        ]
-        
-        result = []
-        for row in recommendations.iter_rows(named=True):
-            scores = {
-                display_name: row[col_name]
-                for col_name, display_name in radar_features
-            }
-            result.append({
-                "game_id": row[Columns.GAME_ID],
-                "final_score": row[Columns.FINAL_SCORE],
-                "scores": scores,
-            })
-        
-        return result

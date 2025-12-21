@@ -82,13 +82,10 @@ class KNNCandidateGenerator:
         self._full_df = df
         
         # Filter to only recommendable games for KNN model
-        recommendable_df = df.filter(pl.col("to_recommend") == 1)
-        self._df = recommendable_df
+        self._df = df.filter(pl.col("to_recommend") == 1)
         
         # Detect feature columns
-        feature_columns = self._detect_feature_columns(recommendable_df)
-        
-        self._feature_columns = feature_columns
+        self._feature_columns = self._detect_feature_columns(self._df)
         
         # Build index mappings
         ids = df.select("id").to_series().to_list()
@@ -96,14 +93,11 @@ class KNNCandidateGenerator:
         self._idx_to_id = {idx: game_id for idx, game_id in enumerate(ids)}
         
         # Extract feature matrix
-        feature_matrix = df.select(feature_columns).to_numpy().astype(np.float32)
-        
-        # Handle NaN values
-        feature_matrix = np.nan_to_num(feature_matrix, nan=0.0)
+        feature_matrix = df.select(self._feature_columns).to_numpy().astype(np.float32)
         
         # Fit the KNN model
         self._model = NearestNeighbors(
-            n_neighbors=min(self.config.n_neighbors + 1, len(df)),  # +1 to exclude self
+            n_neighbors=min(self.config.n_neighbors + 1, len(self._df)),  # +1 to exclude self
             metric=self.config.metric,
             algorithm=self.config.algorithm,
         )
@@ -160,12 +154,11 @@ class KNNCandidateGenerator:
             .row(0)
         )
         input_vector = np.array(input_features, dtype=np.float32).reshape(1, -1)
-        input_vector = np.nan_to_num(input_vector, nan=0.0)
         
         # Find nearest neighbors (from recommendable games only)
         distances, indices = self._model.kneighbors(
             input_vector, 
-            n_neighbors=min(n_candidates, len(self._df))
+            n_neighbors=min(n_candidates + 1, len(self._df))
         )
         
         # Flatten results
@@ -197,9 +190,6 @@ class KNNCandidateGenerator:
             pl.Series("cosine_distance", distance_series, dtype=pl.Float64)
         )
         
-        # Sort by distance (closest first)
-        candidates = candidates.sort("cosine_distance")
-        
         return candidates
     
     def get_input_game(self, game_id: str) -> pl.DataFrame:
@@ -212,10 +202,7 @@ class KNNCandidateGenerator:
         
         Returns:
             Single-row DataFrame with all columns for the game.
-        """
-        if self._full_df is None:
-            raise RuntimeError("Model not fitted. Call fit() first.")
-        
+        """        
         result = self._full_df.filter(pl.col("id") == game_id)
         
         if result.height == 0:

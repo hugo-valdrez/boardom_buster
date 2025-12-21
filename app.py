@@ -1,5 +1,6 @@
 import streamlit as st
 import polars as pl
+from rapidfuzz import fuzz, process
 
 from src.ml.recommender import BoardGameRecommender
 from src.other.abstract.write_reader_factory import WriterReaderFactory
@@ -24,7 +25,7 @@ def load_game_names():
 
 
 def search_games(query: str, games: list, max_results: int = 10) -> list:
-    """Simple fuzzy search on game names."""
+    """Fuzzy search on game names with typo tolerance."""
     if not query or len(query) < 2:
         return []
     
@@ -37,17 +38,23 @@ def search_games(query: str, games: list, max_results: int = 10) -> list:
         
         # Exact match gets highest priority
         if query_lower == name_lower:
-            matches.append((0, game))
+            matches.append((0, 100, game))
         # Starts with query
         elif name_lower.startswith(query_lower):
-            matches.append((1, game))
+            matches.append((1, 95, game))
         # Contains query
         elif query_lower in name_lower:
-            matches.append((2, game))
+            matches.append((2, 90, game))
+        # Fuzzy match for typos (e.g., "Katan" -> "Catan")
+        else:
+            # Use token_sort_ratio for better matching with word order variations
+            ratio = fuzz.token_sort_ratio(query_lower, name_lower)
+            if ratio >= 70:  # Threshold for considering it a match
+                matches.append((3, ratio, game))
     
-    # Sort by priority, then alphabetically
-    matches.sort(key=lambda x: (x[0], x[1]["name"]))
-    return [m[1] for m in matches[:max_results]]
+    # Sort by priority, then by fuzzy score (desc), then alphabetically
+    matches.sort(key=lambda x: (x[0], -x[1], x[2]["name"]))
+    return [m[2] for m in matches[:max_results]]
 
 
 def search_callback(query: str, games: list) -> list[str]:

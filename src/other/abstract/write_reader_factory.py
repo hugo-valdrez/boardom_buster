@@ -38,6 +38,7 @@ class WriterReaderFactory:
                 try:
                     date = datetime.strptime(date_str, "%Y%m%d")
                     dated_files.append((date, file))
+                    print(dated_files)
                 except ValueError:
                     continue
         

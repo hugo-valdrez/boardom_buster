@@ -15,7 +15,6 @@ class BoardGameRecommender:
         >>> recommender = BoardGameRecommender()
         >>> recommender.load_data()  # or recommender.fit(df)
         >>> recommendations = recommender.recommend("12345")
-        >>> radar_data = recommender.get_radar_data(recommendations)
     """
     
     def __init__(self):
@@ -84,26 +83,11 @@ class BoardGameRecommender:
         
         # Re-rank and return top-k
         if top_k is not None:
-            # Temporarily override top_k
-            original_top_k = self._reranker.config.top_k
-            self._reranker.config.top_k = top_k
-            result = self._reranker.rerank(input_game, candidates)
-            self._reranker.config.top_k = original_top_k
+            result = self._reranker.rerank(input_game, candidates, top_k)
         else:
-            result = self._reranker.rerank(input_game, candidates)
+            result = self._reranker.rerank(input_game, candidates, self._reranker.config.top_k)
         
         return result
-    
-    def get_radar_data(self, recommendations: pl.DataFrame) -> List[dict]:
-        """Convert recommendations to radar chart format.
-        
-        Args:
-            recommendations: DataFrame from recommend().
-        
-        Returns:
-            List of dicts with game_id, final_score, and scores dict.
-        """
-        return self._reranker.get_radar_data(recommendations)
     
     def get_game_info(self, game_id: str) -> dict:
         """Get basic info for a game.
@@ -117,11 +101,13 @@ class BoardGameRecommender:
         game = self._knn.get_input_game(game_id)
         return game.row(0, named=True)
     
+    # debuging purposes
     @property
     def n_games(self) -> int:
         """Number of games in the model."""
         return self._knn.n_games
     
+    # debuging purposes
     @property
     def feature_columns(self) -> Optional[List[str]]:
         """Feature columns used for KNN."""

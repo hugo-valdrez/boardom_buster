@@ -11,7 +11,7 @@ class ParquetWriterReader(BaseWriterReader):
     
     def __init__(self, file_path: Path):
         super().__init__(file_path)
-        self._df: Optional[pl.DataFrame] = None
+        self._df: pl.DataFrame = None
 
     def read(self) -> pl.DataFrame:
         """Read data from the parquet file."""

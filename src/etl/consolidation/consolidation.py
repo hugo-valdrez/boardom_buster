@@ -9,8 +9,7 @@ from src.etl.consolidation.abstract.transformations import (
     Transform_NormalizeColumn,
     Create_PopularityScore,
     Create_OneHotFromList,
-    Transform_ClipValues,
-    Create_DescriptionEmbedding
+    Transform_ClipValues
 )
 from src.other.abstract.write_reader_factory import WriterReaderFactory
 
@@ -67,6 +66,9 @@ def consolidation():
         Transform_ClipValues(col="playing_time", min_val=filters["min_playing_time"], max_val=filters["max_playing_time"]),
         # Transform_NormalizeColumn(col="playing_time", filter_column="to_recommend", value=1),
         
+        # Filter publication year
+        Filter_RowsNullEmpty(col="publication_year"),
+
         # Normalize min age
         Filter_RowsNullEmpty(col="min_age"),
         Transform_NormalizeColumn(col="min_age", filter_column="to_recommend", value=1),
@@ -90,7 +92,6 @@ def consolidation():
         Create_OneHotFromList(col="categories"),
 
         Create_OneHotFromList(col="mechanics")
-        
     ]
 
     pipeline = TransformationsManager(transformations=transformations)
