@@ -208,6 +208,5 @@ __marimo__/
 
 # Other
 # data/processed/*
-data/raw/*
 other.ipynb
 TO DO.txt
