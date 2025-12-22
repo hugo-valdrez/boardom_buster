@@ -209,13 +209,3 @@ class KNNCandidateGenerator:
             raise ValueError(f"Game ID '{game_id}' not found in dataset.")
         
         return result
-    
-    @property
-    def feature_columns(self) -> Optional[List[str]]:
-        """Return the feature columns used for KNN."""
-        return self._feature_columns
-    
-    @property 
-    def n_games(self) -> int:
-        """Return the number of games in the fitted model."""
-        return len(self._id_to_idx) if self._id_to_idx else 0

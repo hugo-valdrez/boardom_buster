@@ -4,4 +4,4 @@ xmltodict
 pydantic-settings
 PyYAML
 scikit-learn
-streamlit
+fastapi

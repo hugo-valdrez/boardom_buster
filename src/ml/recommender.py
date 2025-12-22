@@ -58,6 +58,7 @@ class BoardGameRecommender:
         game_id: str,
         n_candidates: Optional[int] = None,
         top_k: Optional[int] = None,
+        weights: Optional[dict] = None
     ) -> pl.DataFrame:
         """Get recommendations for a game.
         
@@ -82,10 +83,9 @@ class BoardGameRecommender:
         input_game = self._knn.get_input_game(game_id)
         
         # Re-rank and return top-k
-        if top_k is not None:
-            result = self._reranker.rerank(input_game, candidates, top_k)
-        else:
-            result = self._reranker.rerank(input_game, candidates, self._reranker.config.top_k)
+        top_k = top_k or self._reranker.config.top_k
+        weights = weights or self._reranker.config.to_dict()
+        result = self._reranker.rerank(input_game, candidates, top_k, weights)
         
         return result
     
@@ -100,15 +100,3 @@ class BoardGameRecommender:
         """
         game = self._knn.get_input_game(game_id)
         return game.row(0, named=True)
-    
-    # debuging purposes
-    @property
-    def n_games(self) -> int:
-        """Number of games in the model."""
-        return self._knn.n_games
-    
-    # debuging purposes
-    @property
-    def feature_columns(self) -> Optional[List[str]]:
-        """Feature columns used for KNN."""
-        return self._knn.feature_columns
