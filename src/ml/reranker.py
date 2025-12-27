@@ -150,7 +150,6 @@ class ReRanker:
             .head(top_k)
             .select(self._output_columns())
         )
-        
         return result
     
     def _extract_features(self, game: pl.DataFrame) -> dict:

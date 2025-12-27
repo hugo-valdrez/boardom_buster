@@ -87,16 +87,43 @@ class BoardGameRecommender:
         weights = weights or self._reranker.config.to_dict()
         result = self._reranker.rerank(input_game, candidates, top_k, weights)
         
+        # Join additional columns from candidates
+        additional_cols = candidates.select(["id", "mechanics", "categories", "bgg_link"])
+        result = result.join(additional_cols, on="id", how="left")
+        
+        # Generate comments for top performers in each category
+        result = self._add_comments(result)
+        
         return result
     
-    def get_game_info(self, game_id: str) -> dict:
-        """Get basic info for a game.
+    def _add_comments(self, df: pl.DataFrame) -> pl.DataFrame:
+        """Add comments highlighting what each game excels at.
         
         Args:
-            game_id: The game ID.
+            df: DataFrame with recommendation scores.
         
         Returns:
-            Dict with game information.
+            DataFrame with added 'comment' column.
         """
-        game = self._knn.get_input_game(game_id)
-        return game.row(0, named=True)
+        # Find max values for each metric
+        max_similarity = df["cosine_similarity"].max()
+        max_popularity = df["normalized_popularity"].max()
+        max_rating = df["normalized_avg_rating"].max()
+        
+        # Build comments for each row
+        comments = []
+        for row in df.iter_rows(named=True):
+            row_comments = []
+            
+            if row["cosine_similarity"] == max_similarity:
+                row_comments.append("This game is very similar to your game!")
+            
+            if row["normalized_popularity"] == max_popularity:
+                row_comments.append("This game is the most popular between all the recommendations!")
+            
+            if row["normalized_avg_rating"] == max_rating:
+                row_comments.append("This game has the best rating across all recommendations!")
+            
+            comments.append(" ".join(row_comments) if row_comments else "")
+        
+        return df.with_columns(pl.Series("comment", comments, dtype=pl.Utf8))

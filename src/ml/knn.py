@@ -57,7 +57,8 @@ class KNNCandidateGenerator:
             "id", "thumbnail_url", "image_url", "description", "publication_year",
             "min_playing_time", "max_playing_time", "name", "num_ratings",
             "avg_rating", "stddev_rating", "to_recommend", "playing_time",
-            "min_age", "bayesian_avg_rating", "popularity_score"
+            "min_age", "bayesian_avg_rating", "popularity_score", "mechanics", 
+            "categories", "bgg_link"
         ])
         self._model: Optional[NearestNeighbors] = None
         self._full_df: Optional[pl.DataFrame] = None  # All games (for input lookup)
