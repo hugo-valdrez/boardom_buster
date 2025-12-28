@@ -95,53 +95,6 @@ class BoardGameRecommender:
         result = self._add_comments(result)
         
         return result
-    
-    def _add_comments(self, df: pl.DataFrame) -> pl.DataFrame:
-        """Add comments highlighting what each game excels at.
-        
-        Args:
-            df: DataFrame with recommendation scores.
-        
-        Returns:
-            DataFrame with added 'comment' column.
-        """
-        # Find max values for each metric
-        max_similarity = df["cosine_similarity"].max()
-        max_popularity = df["normalized_popularity"].max()
-        max_rating = df["normalized_avg_rating"].max()
-        
-        # Build comments for each row
-        comments = []
-        for row in df.iter_rows(named=True):
-            row_comments = []
-            
-            if row["cosine_similarity"] == max_similarity:
-                row_comments.append("This game is very similar to your game")
-            
-            if row["normalized_popularity"] == max_popularity:
-                if row_comments:
-                    row_comments.append(", is the most popular among all the recommendations")
-                else:
-                    row_comments.append("This game is the most popular among all the recommendations")
-            
-            if row["normalized_avg_rating"] == max_rating:
-                if row_comments:
-                    row_comments.append(" and has the best rating across all recommendations")
-                else:        
-                    row_comments.append("This game has the best rating across all recommendations")
-            
-            final_comment = ""
-            if len(row_comments) == 2:
-                for comment in row_comments:
-                    final_comment += comment.replace(',', 'and')
-            else:
-                for comment in row_comments:
-                    final_comment += comment
-            final_comment.append('!')
-
-            comments.append(final_comment)
-        
-        return df.with_columns(pl.Series("comment", comments, dtype=pl.Utf8))
 
     def _add_comments(self, df: pl.DataFrame) -> pl.DataFrame:
         """Add comments highlighting what each game excels at.
@@ -152,18 +105,18 @@ class BoardGameRecommender:
         Returns:
             DataFrame with added 'comment' column.
         """
-        # Find max values for each metric
-        max_sim = df["cosine_similarity"].max()
-        max_pop = df["normalized_popularity"].max()
-        max_rating = df["normalized_avg_rating"].max()
+        # Find the game with max for each metric (breaking ties by final_score)
+        max_sim_game = df.sort(["cosine_similarity", "final_score"], descending=True).row(0, named=True)
+        max_pop_game = df.sort(["normalized_popularity", "final_score"], descending=True).row(0, named=True)
+        max_rating_game = df.sort(["normalized_avg_rating", "final_score"], descending=True).row(0, named=True)
 
         comments = []
 
         for row in df.iter_rows(named=True):
-            # Determine which facts are true
-            is_sim = row["cosine_similarity"] == max_sim
-            is_pop = row["normalized_popularity"] == max_pop
-            is_rating = row["normalized_avg_rating"] == max_rating
+            # Determine which facts are true for this specific game
+            is_sim = row["id"] == max_sim_game["id"]
+            is_pop = row["id"] == max_pop_game["id"]
+            is_rating = row["id"] == max_rating_game["id"]
 
             parts = []
 
