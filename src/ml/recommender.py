@@ -116,14 +116,74 @@ class BoardGameRecommender:
             row_comments = []
             
             if row["cosine_similarity"] == max_similarity:
-                row_comments.append("This game is very similar to your game!")
+                row_comments.append("This game is very similar to your game")
             
             if row["normalized_popularity"] == max_popularity:
-                row_comments.append("This game is the most popular between all the recommendations!")
+                if row_comments:
+                    row_comments.append(", is the most popular among all the recommendations")
+                else:
+                    row_comments.append("This game is the most popular among all the recommendations")
             
             if row["normalized_avg_rating"] == max_rating:
-                row_comments.append("This game has the best rating across all recommendations!")
+                if row_comments:
+                    row_comments.append(" and has the best rating across all recommendations")
+                else:        
+                    row_comments.append("This game has the best rating across all recommendations")
             
-            comments.append(" ".join(row_comments) if row_comments else "")
+            final_comment = ""
+            if len(row_comments) == 2:
+                for comment in row_comments:
+                    final_comment += comment.replace(',', 'and')
+            else:
+                for comment in row_comments:
+                    final_comment += comment
+            final_comment.append('!')
+
+            comments.append(final_comment)
         
+        return df.with_columns(pl.Series("comment", comments, dtype=pl.Utf8))
+
+    def _add_comments(self, df: pl.DataFrame) -> pl.DataFrame:
+        """Add comments highlighting what each game excels at.
+        
+        Args:
+            df: DataFrame with recommendation scores.
+        
+        Returns:
+            DataFrame with added 'comment' column.
+        """
+        # Find max values for each metric
+        max_sim = df["cosine_similarity"].max()
+        max_pop = df["normalized_popularity"].max()
+        max_rating = df["normalized_avg_rating"].max()
+
+        comments = []
+
+        for row in df.iter_rows(named=True):
+            # Determine which facts are true
+            is_sim = row["cosine_similarity"] == max_sim
+            is_pop = row["normalized_popularity"] == max_pop
+            is_rating = row["normalized_avg_rating"] == max_rating
+
+            parts = []
+
+            # Handle Similarity (Always stands alone)
+            if is_sim:
+                parts.append("is very similar to your game")
+
+            # We construct a specific phrase depending on the combination
+            if is_pop and is_rating:
+                parts.append("is the most popular and highest-rated recommendation")
+            elif is_pop:
+                parts.append("is the most popular recommendation")
+            elif is_rating:
+                parts.append("has the best rating across all recommendations")
+
+            # Construct the sentence
+            if not parts:
+                comments.append("")
+            else:
+                full_sentence = "This game " + " and ".join(parts) + "!"
+                comments.append(full_sentence)
+
         return df.with_columns(pl.Series("comment", comments, dtype=pl.Utf8))
