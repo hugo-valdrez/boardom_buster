@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boardom Buster</title>
+</head>
+<body>
+    <h1>Boardom Buster</h1>
+    <div>
+        <input type="text" id="gameName" placeholder="Enter board game name..." autocomplete="off"/>
+        <button onclick="getRecommendations()">Search</button>
+    </div>
+
+    <div id="searchResults"></div>
+    <div id="selectedGame"></div>
+
+    <div id="results"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

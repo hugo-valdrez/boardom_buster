@@ -9,6 +9,17 @@ from src.ml.recommender import BoardGameRecommender
 router = APIRouter(tags=["recommendations"])
 
 
+@router.get("/games")
+async def get_all_games(recommender: BoardGameRecommender = Depends(get_recommender)):
+    """Get all available games for client-side filtering."""
+    try:
+        games_df = recommender._knn._full_df
+        results = games_df.select(["id", "name"]).to_dicts()
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch games: {str(e)}")
+
+
 @router.post("/recommend", response_model=List[GameResponse])
 async def get_recommendations(
     payload: RecommendationRequest, recommender: BoardGameRecommender = Depends(get_recommender)
