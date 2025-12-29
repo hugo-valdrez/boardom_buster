@@ -3,9 +3,8 @@ import asyncio
 from fastapi import APIRouter, BackgroundTasks
 
 from src.app.dependencies import state
-from src.etl.ingestion.bgg import continuous_fetch
 from src.etl.consolidation.consolidation import consolidation
-
+from src.etl.ingestion.bgg import continuous_fetch
 
 router = APIRouter(tags=["ingestion"])
 
@@ -14,10 +13,10 @@ async def run_ingestion_pipeline():
     """Run the full ingestion and consolidation pipeline, then reload recommender."""
     # Run ingestion
     await continuous_fetch()
-    
+
     # Run consolidation
     consolidation()
-    
+
     # Reload recommender with new data
     state.reload()
 
