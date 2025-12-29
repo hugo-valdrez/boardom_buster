@@ -1,7 +1,13 @@
-httpx
+fastapi
+uvicorn
 polars
-xmltodict
+scikit-learn
 pydantic-settings
 PyYAML
-scikit-learn
-fastapi
+httpx
+xmltodict
+pytest
+pytest-cov
+black
+flake8
+isort

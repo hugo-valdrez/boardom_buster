@@ -1,10 +1,13 @@
-from pydantic import BaseModel
 from typing import Optional
+
+from pydantic import BaseModel
+
 
 class RecommendationRequest(BaseModel):
     game_id: int
     weights: Optional[dict] = None
     top_k: int = None
+
 
 class GameResponse(BaseModel):
     name: str

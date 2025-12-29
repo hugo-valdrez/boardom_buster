@@ -1,10 +1,10 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
 import uvicorn
+from fastapi import FastAPI
 
 from src.app.dependencies import state
-from src.app.routes import recommend_router, ingest_router
+from src.app.routes import recommend_router
 
 
 @asynccontextmanager

@@ -1,25 +1,25 @@
-from typing import Optional, List
+from typing import Optional
 
 import polars as pl
 
-from src.ml.knn import KNNCandidateGenerator, KNNConfig
-from src.ml.reranker import ReRanker, ReRankerConfig
-from src.other.abstract.write_reader_factory import WriterReaderFactory
 from src.config import settings
+from src.ml.knn import KNNCandidateGenerator
+from src.ml.reranker import ReRanker
+from src.other.abstract.write_reader_factory import WriterReaderFactory
 
 
 class BoardGameRecommender:
     """High-level recommender combining KNN candidate generation and re-ranking.
-    
+
     Example:
         >>> recommender = BoardGameRecommender()
         >>> recommender.load_data()  # or recommender.fit(df)
         >>> recommendations = recommender.recommend("12345")
     """
-    
+
     def __init__(self):
         """Initialize the recommender.
-        
+
         Args:
             knn_config: Configuration for KNN. Uses defaults from settings.yaml if None.
             reranker_config: Configuration for ReRanker. Uses defaults from settings.yaml if None.
@@ -27,7 +27,7 @@ class BoardGameRecommender:
         self._knn = KNNCandidateGenerator()
         self._reranker = ReRanker()
         self._is_fitted = False
-    
+
     def load_data(self) -> "BoardGameRecommender":
         """Load processed data and fit the model.
 
@@ -37,36 +37,36 @@ class BoardGameRecommender:
         data_dir = settings.PATHS["processed_data"]
         writer_reader = WriterReaderFactory.create_from_directory(data_dir)
         df = writer_reader.read()
-        
+
         return self.fit(df)
-    
+
     def fit(self, df: pl.DataFrame) -> "BoardGameRecommender":
         """Fit the recommender on a DataFrame.
-        
+
         Args:
             df: Processed DataFrame from consolidation.
-        
+
         Returns:
             self for method chaining.
         """
         self._knn.fit(df)
         self._is_fitted = True
         return self
-    
+
     def recommend(
-        self, 
+        self,
         game_id: str,
         n_candidates: Optional[int] = None,
         top_k: Optional[int] = None,
-        weights: Optional[dict] = None
+        weights: Optional[dict] = None,
     ) -> pl.DataFrame:
         """Get recommendations for a game.
-        
+
         Args:
             game_id: The ID of the input game.
             n_candidates: Number of KNN candidates to consider. Defaults to config.
             top_k: Number of final recommendations. Defaults to reranker config.
-        
+
         Returns:
             DataFrame with top-k recommendations, including:
             - id, final_score, cosine_similarity
@@ -75,40 +75,46 @@ class BoardGameRecommender:
         """
         if not self._is_fitted:
             raise RuntimeError("Recommender not fitted. Call fit() or load_data() first.")
-        
+
         # Get KNN candidates
         candidates = self._knn.get_candidates(game_id, n_candidates)
-        
+
         # Get input game for re-ranking context
         input_game = self._knn.get_input_game(game_id)
-        
+
         # Re-rank and return top-k
         top_k = top_k or self._reranker.config.top_k
         weights = weights or self._reranker.config.to_dict()
         result = self._reranker.rerank(input_game, candidates, top_k, weights)
-        
+
         # Join additional columns from candidates
         additional_cols = candidates.select(["id", "mechanics", "categories", "bgg_link"])
         result = result.join(additional_cols, on="id", how="left")
-        
+
         # Generate comments for top performers in each category
         result = self._add_comments(result)
-        
+
         return result
 
     def _add_comments(self, df: pl.DataFrame) -> pl.DataFrame:
         """Add comments highlighting what each game excels at.
-        
+
         Args:
             df: DataFrame with recommendation scores.
-        
+
         Returns:
             DataFrame with added 'comment' column.
         """
         # Find the game with max for each metric (breaking ties by final_score)
-        max_sim_game = df.sort(["cosine_similarity", "final_score"], descending=True).row(0, named=True)
-        max_pop_game = df.sort(["normalized_popularity", "final_score"], descending=True).row(0, named=True)
-        max_rating_game = df.sort(["normalized_avg_rating", "final_score"], descending=True).row(0, named=True)
+        max_sim_game = df.sort(["cosine_similarity", "final_score"], descending=True).row(
+            0, named=True
+        )
+        max_pop_game = df.sort(["normalized_popularity", "final_score"], descending=True).row(
+            0, named=True
+        )
+        max_rating_game = df.sort(["normalized_avg_rating", "final_score"], descending=True).row(
+            0, named=True
+        )
 
         comments = []
 

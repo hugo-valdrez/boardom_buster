@@ -7,7 +7,7 @@ import polars as pl
 
 class BaseWriterReader(ABC):
     """Abstract base class for reading and writing data files."""
-    
+
     def __init__(self, file_path: Path):
         self.file_path = file_path
 
@@ -15,7 +15,7 @@ class BaseWriterReader(ABC):
         """Validate that the file exists before reading."""
         if not self.file_path.exists():
             raise FileNotFoundError(f"File not found: {self.file_path}")
-        
+
     @abstractmethod
     def read(self) -> pl.DataFrame:
         """Read data from the file path."""

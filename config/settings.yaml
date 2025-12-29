@@ -23,15 +23,15 @@ etl:
       mechanics_threshold: 81
       min_playing_time: 0.0
       max_playing_time: 360.0
-    
+
     player_counts:
       max_cap: 20
-    
+
     popularity_score:
       weight_owned: 2.0
       weight_wanted: 1.0
       weight_wished: 0.5
-    
+
     column_types:
       num_ratings: "int"
       min_players: "int"
@@ -44,7 +44,7 @@ etl:
       wanted_by: "int"
       wished_by: "int"
       publication_year: "int"
-  
+
   output:
     base_filename: "bgg"
     file_extension: ".parquet"
@@ -74,7 +74,7 @@ ml:
       - "mechanics"
       - "categories"
       - "bgg_link"
-  
+
   reranker:
     weight_cosine_similarity: 0.30
     weight_year_similarity: 0.10

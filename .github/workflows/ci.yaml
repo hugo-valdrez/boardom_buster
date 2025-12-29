@@ -2,45 +2,31 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, dev ]
   workflow_dispatch: # So I can manually trigger it from GitHub UI
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.12'
-    
+        python-version: '3.14'
+
     - name: Install uv
       uses: astral-sh/setup-uv@v4
-    
+
     - name: Install dependencies
       run: |
         uv pip install --system -r requirements.txt
-        uv pip install --system pytest pytest-cov
-    
+
     - name: Run tests
       run: |
-        pytest --cov=src --cov-report=term-missing
-    
-    - name: Check code formatting with black
-      run: |
-        uv pip install --system black
-        black --check .
-      continue-on-error: true
-    
-    - name: Lint with flake8
-      run: |
-        uv pip install --system flake8
-        flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 src/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-      continue-on-error: true
+        pytest tests/ --cov=src --cov-report=term-missing -v
