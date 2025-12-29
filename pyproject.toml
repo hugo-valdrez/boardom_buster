@@ -1,0 +1,52 @@
+[tool.pytest.ini_options]
+# Pytest configuration
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Add src directory to Python path
+pythonpath = ["."]
+
+# Display settings
+addopts = [
+    "-v",                          # Verbose output
+    "--strict-markers",            # Ensure markers are defined
+    "--tb=short",                  # Shorter traceback format
+    "--disable-warnings",          # Cleaner output
+    "-ra",                         # Show summary of all test outcomes
+]
+
+# Markers for categorizing tests
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "slow: Tests that take a long time to run",
+    "asyncio: Async tests",
+]
+
+# Coverage settings
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/virtualenv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]

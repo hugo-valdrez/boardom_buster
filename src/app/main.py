@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Boardom Buster API", lifespan=lifespan)
 
 app.include_router(recommend_router)
-app.include_router(ingest_router)
+# app.include_router(ingest_router)
 
 
 if __name__ == "__main__":
