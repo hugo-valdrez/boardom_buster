@@ -1,52 +1,24 @@
+[project]
+name = "boardom_buster"
+version = "0.1.0"
+requires-python = ">=3.12"
+
 [tool.pytest.ini_options]
-# Pytest configuration
 testpaths = ["tests"]
-python_files = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
+addopts = ["-v", "--tb=short"]
 
-# Add src directory to Python path
-pythonpath = ["."]
-
-# Display settings
-addopts = [
-    "-v",                          # Verbose output
-    "--strict-markers",            # Ensure markers are defined
-    "--tb=short",                  # Shorter traceback format
-    "--disable-warnings",          # Cleaner output
-    "-ra",                         # Show summary of all test outcomes
-]
-
-# Markers for categorizing tests
-markers = [
-    "unit: Unit tests",
-    "integration: Integration tests",
-    "slow: Tests that take a long time to run",
-    "asyncio: Async tests",
-]
-
-# Coverage settings
 [tool.coverage.run]
 source = ["src"]
-omit = [
-    "*/tests/*",
-    "*/__pycache__/*",
-    "*/venv/*",
-    "*/virtualenv/*",
-    "*/.venv/*",
-]
+omit = ["*/tests/*", "*/__pycache__/*"]
 
-[tool.coverage.report]
-precision = 2
-show_missing = true
-skip_covered = false
+[tool.black]
+line-length = 100
+target-version = ['py311', 'py312']
 
-exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "raise AssertionError",
-    "raise NotImplementedError",
-    "if __name__ == .__main__.:",
-    "if TYPE_CHECKING:",
-    "@abstractmethod",
-]
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.flake8]
+max-line-length = 127
+extend-ignore = ["E203", "W503"]
