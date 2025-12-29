@@ -71,6 +71,9 @@ ml:
       - "min_age"
       - "bayesian_avg_rating"
       - "popularity_score"
+      - "mechanics"
+      - "categories"
+      - "bgg_link"
   
   reranker:
     weight_cosine_similarity: 0.30

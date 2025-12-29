@@ -156,7 +156,7 @@ class Create_OneHotFromList(BaseTransformation):
 
     def transform(self, df: pl.DataFrame) -> pl.DataFrame:
         unique_vals = (
-            df.select(pl.col(self.col).explode().unique().drop_nulls())
+            df.select(pl.col(self.col).explode().unique())
             .get_column(self.col)
             .sort()
             .to_list()
@@ -171,7 +171,19 @@ class Create_OneHotFromList(BaseTransformation):
         ]
 
         df = df.with_columns(expressions)
-        return df.drop(self.col)
+        return df
+    
+class Create_BGGLink(BaseTransformation):
+    """Creates a BGG link column from a game ID column."""
+
+    def __init__(self, col: str):
+        self.col = col
+
+    def transform(self, df: pl.DataFrame) -> pl.DataFrame:
+        return df.with_columns(
+            (pl.lit("https://boardgamegeek.com/boardgame/") + pl.col(self.col).cast(pl.Utf8))
+            .alias('bgg_link')
+        )
 
 
 # ============================================================================
@@ -265,7 +277,7 @@ class Update_ColumnByThreshold(BaseTransformation):
 
     def transform(self, df: pl.DataFrame) -> pl.DataFrame:
         return df.with_columns(
-            pl.when(pl.col(self.col) >= self.threshold)
+            pl.when(pl.col(self.col) <= self.threshold)
             .then(pl.lit(self.value))
             .otherwise(pl.col(self.filter_column)) 
             .alias(self.filter_column)

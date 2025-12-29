@@ -57,7 +57,8 @@ class KNNCandidateGenerator:
             "id", "thumbnail_url", "image_url", "description", "publication_year",
             "min_playing_time", "max_playing_time", "name", "num_ratings",
             "avg_rating", "stddev_rating", "to_recommend", "playing_time",
-            "min_age", "bayesian_avg_rating", "popularity_score"
+            "min_age", "bayesian_avg_rating", "popularity_score", "mechanics", 
+            "categories", "bgg_link"
         ])
         self._model: Optional[NearestNeighbors] = None
         self._full_df: Optional[pl.DataFrame] = None  # All games (for input lookup)
@@ -209,13 +210,3 @@ class KNNCandidateGenerator:
             raise ValueError(f"Game ID '{game_id}' not found in dataset.")
         
         return result
-    
-    @property
-    def feature_columns(self) -> Optional[List[str]]:
-        """Return the feature columns used for KNN."""
-        return self._feature_columns
-    
-    @property 
-    def n_games(self) -> int:
-        """Return the number of games in the fitted model."""
-        return len(self._id_to_idx) if self._id_to_idx else 0

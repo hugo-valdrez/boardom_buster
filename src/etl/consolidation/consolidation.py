@@ -9,7 +9,8 @@ from src.etl.consolidation.abstract.transformations import (
     Transform_NormalizeColumn,
     Create_PopularityScore,
     Create_OneHotFromList,
-    Transform_ClipValues
+    Transform_ClipValues,
+    Create_BGGLink
 )
 from src.other.abstract.write_reader_factory import WriterReaderFactory
 
@@ -28,7 +29,7 @@ def consolidation():
     popularity_config = etl_config["popularity_score"]
     column_types = etl_config["column_types"]
     output_config = settings.ETL["output"]
-
+                  
     transformations = [
         Transform_ColumnTypes(columns=column_types),
         
@@ -37,6 +38,7 @@ def consolidation():
         
         # Filter and flag based on ratings
         Filter_RowsNullEmpty(col="num_ratings"),
+
         Update_ColumnByThreshold(
             col="num_ratings", 
             threshold=filters["num_ratings_threshold"], 
@@ -91,7 +93,9 @@ def consolidation():
 
         Create_OneHotFromList(col="categories"),
 
-        Create_OneHotFromList(col="mechanics")
+        Create_OneHotFromList(col="mechanics"),
+
+        Create_BGGLink(col="id")
     ]
 
     pipeline = TransformationsManager(transformations=transformations)

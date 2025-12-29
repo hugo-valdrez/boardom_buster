@@ -58,6 +58,7 @@ class BoardGameRecommender:
         game_id: str,
         n_candidates: Optional[int] = None,
         top_k: Optional[int] = None,
+        weights: Optional[dict] = None
     ) -> pl.DataFrame:
         """Get recommendations for a game.
         
@@ -82,33 +83,60 @@ class BoardGameRecommender:
         input_game = self._knn.get_input_game(game_id)
         
         # Re-rank and return top-k
-        if top_k is not None:
-            result = self._reranker.rerank(input_game, candidates, top_k)
-        else:
-            result = self._reranker.rerank(input_game, candidates, self._reranker.config.top_k)
+        top_k = top_k or self._reranker.config.top_k
+        weights = weights or self._reranker.config.to_dict()
+        result = self._reranker.rerank(input_game, candidates, top_k, weights)
+        
+        # Join additional columns from candidates
+        additional_cols = candidates.select(["id", "mechanics", "categories", "bgg_link"])
+        result = result.join(additional_cols, on="id", how="left")
+        
+        # Generate comments for top performers in each category
+        result = self._add_comments(result)
         
         return result
-    
-    def get_game_info(self, game_id: str) -> dict:
-        """Get basic info for a game.
+
+    def _add_comments(self, df: pl.DataFrame) -> pl.DataFrame:
+        """Add comments highlighting what each game excels at.
         
         Args:
-            game_id: The game ID.
+            df: DataFrame with recommendation scores.
         
         Returns:
-            Dict with game information.
+            DataFrame with added 'comment' column.
         """
-        game = self._knn.get_input_game(game_id)
-        return game.row(0, named=True)
-    
-    # debuging purposes
-    @property
-    def n_games(self) -> int:
-        """Number of games in the model."""
-        return self._knn.n_games
-    
-    # debuging purposes
-    @property
-    def feature_columns(self) -> Optional[List[str]]:
-        """Feature columns used for KNN."""
-        return self._knn.feature_columns
+        # Find the game with max for each metric (breaking ties by final_score)
+        max_sim_game = df.sort(["cosine_similarity", "final_score"], descending=True).row(0, named=True)
+        max_pop_game = df.sort(["normalized_popularity", "final_score"], descending=True).row(0, named=True)
+        max_rating_game = df.sort(["normalized_avg_rating", "final_score"], descending=True).row(0, named=True)
+
+        comments = []
+
+        for row in df.iter_rows(named=True):
+            # Determine which facts are true for this specific game
+            is_sim = row["id"] == max_sim_game["id"]
+            is_pop = row["id"] == max_pop_game["id"]
+            is_rating = row["id"] == max_rating_game["id"]
+
+            parts = []
+
+            # Handle Similarity (Always stands alone)
+            if is_sim:
+                parts.append("is very similar to your game")
+
+            # We construct a specific phrase depending on the combination
+            if is_pop and is_rating:
+                parts.append("is the most popular and highest-rated recommendation")
+            elif is_pop:
+                parts.append("is the most popular recommendation")
+            elif is_rating:
+                parts.append("has the best rating across all recommendations")
+
+            # Construct the sentence
+            if not parts:
+                comments.append("")
+            else:
+                full_sentence = "This game " + " and ".join(parts) + "!"
+                comments.append(full_sentence)
+
+        return df.with_columns(pl.Series("comment", comments, dtype=pl.Utf8))

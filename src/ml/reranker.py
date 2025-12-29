@@ -119,7 +119,8 @@ class ReRanker:
         self, 
         input_game: pl.DataFrame, 
         candidates: pl.DataFrame,
-        top_k: str
+        top_k: int,
+        weights: dict
     ) -> pl.DataFrame:
         """Re-rank KNN candidates and return top-k recommendations.
         
@@ -140,7 +141,7 @@ class ReRanker:
         scored = self._compute_scores(candidates, input_features)
         
         # Compute final weighted score
-        scored = self._compute_final_score(scored)
+        scored = self._compute_final_score(scored, weights)
         
         # Sort by final score and return top-k
         result = (
@@ -149,7 +150,6 @@ class ReRanker:
             .head(top_k)
             .select(self._output_columns())
         )
-        
         return result
     
     def _extract_features(self, game: pl.DataFrame) -> dict:
@@ -192,8 +192,6 @@ class ReRanker:
             pl.col(Columns.COSINE_DISTANCE).min().alias("dist_min"),
             pl.col(Columns.COSINE_DISTANCE).max().alias("dist_max"),
         ]).row(0, named=True)
-
-        print(stats["time_min"], stats["time_max"])
 
         return candidates.with_columns([
             # Convert cosine distance to similarity: similarity = 1 - distance
@@ -262,14 +260,25 @@ class ReRanker:
 
         return ((col_expr - min_val) / range_val).clip(0.0, 1.0)
     
-    def _compute_final_score(self, df: pl.DataFrame) -> pl.DataFrame:
-        """Compute weighted final score for each candidate."""
+    def _compute_final_score(self, df: pl.DataFrame, weights: dict) -> pl.DataFrame:
+        """Compute weighted final score for each candidate.
+        
+        Args:
+            df: DataFrame with normalized score columns.
+            weights: Dict with weight values.
+        """
+        w_cosine = weights["weight_cosine_similarity"]
+        w_year = weights["weight_year_similarity"]
+        w_time = weights["weight_playing_time_similarity"]
+        w_rating = weights["weight_rating"]
+        w_popularity = weights["weight_popularity"]
+        
         score_expr = (
-            pl.col(Columns.COSINE_SIMILARITY) * self.config.weight_cosine_similarity +
-            pl.col(Columns.NORM_YEAR_SIMILARITY) * self.config.weight_year_similarity +
-            pl.col(Columns.NORM_PLAYING_TIME_SIMILARITY) * self.config.weight_playing_time_similarity +
-            pl.col(Columns.NORM_AVG_RATING) * self.config.weight_rating +
-            pl.col(Columns.NORM_POPULARITY) * self.config.weight_popularity
+            pl.col(Columns.COSINE_SIMILARITY) * w_cosine +
+            pl.col(Columns.NORM_YEAR_SIMILARITY) * w_year +
+            pl.col(Columns.NORM_PLAYING_TIME_SIMILARITY) * w_time +
+            pl.col(Columns.NORM_AVG_RATING) * w_rating +
+            pl.col(Columns.NORM_POPULARITY) * w_popularity
         )
         
         return df.with_columns(score_expr.alias(Columns.FINAL_SCORE))
