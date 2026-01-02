@@ -39,6 +39,20 @@ def sample_processed_data():
                 "https://boardgamegeek.com/boardgame/4",
                 "https://boardgamegeek.com/boardgame/5",
             ],
+            "image_url": [
+                "https://example.com/image1.jpg",
+                "https://example.com/image2.jpg",
+                "https://example.com/image3.jpg",
+                "https://example.com/image4.jpg",
+                "https://example.com/image5.jpg",
+            ],
+            "description": [
+                "Description 1",
+                "Description 2",
+                "Description 3",
+                "Description 4",
+                "Description 5",
+            ],
         }
     )
 
@@ -63,6 +77,16 @@ def sample_knn_results():
                 "https://boardgamegeek.com/boardgame/2",
                 "https://boardgamegeek.com/boardgame/3",
                 "https://boardgamegeek.com/boardgame/4",
+            ],
+            "image_url": [
+                "https://example.com/image2.jpg",
+                "https://example.com/image3.jpg",
+                "https://example.com/image4.jpg",
+            ],
+            "description": [
+                "Description 2",
+                "Description 3",
+                "Description 4",
             ],
         }
     )
@@ -144,7 +168,9 @@ class TestBoardGameRecommender:
 
         # Add required columns to mock
         result_with_metadata = sample_reranked_results.join(
-            sample_knn_results.select(["id", "mechanics", "categories", "bgg_link"]),
+            sample_knn_results.select(
+                ["id", "mechanics", "categories", "bgg_link", "image_url", "description"]
+            ),
             on="id",
             how="left",
         )
@@ -176,6 +202,8 @@ class TestBoardGameRecommender:
                     "mechanics": [["Dice"]],
                     "categories": [["Family"]],
                     "bgg_link": ["https://bgg.com/2"],
+                    "image_url": ["https://example.com/image2.jpg"],
+                    "description": ["Description 2"],
                 }
             )
         )
@@ -231,6 +259,8 @@ class TestBoardGameRecommender:
                     "mechanics": [["Dice"]],
                     "categories": [["Family"]],
                     "bgg_link": ["https://bgg.com/2"],
+                    "image_url": ["https://example.com/image2.jpg"],
+                    "description": ["Description 2"],
                 }
             )
         )
