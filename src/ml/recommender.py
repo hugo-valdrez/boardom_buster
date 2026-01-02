@@ -88,7 +88,9 @@ class BoardGameRecommender:
         result = self._reranker.rerank(input_game, candidates, top_k, weights)
 
         # Join additional columns from candidates
-        additional_cols = candidates.select(["id", "mechanics", "categories", "bgg_link"])
+        additional_cols = candidates.select(
+            ["id", "mechanics", "categories", "bgg_link", "image_url", "description"]
+        )
         result = result.join(additional_cols, on="id", how="left")
 
         # Generate comments for top performers in each category

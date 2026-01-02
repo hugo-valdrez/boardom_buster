@@ -7,6 +7,7 @@ from src.etl.consolidation.abstract.transformations import (
     Create_PopularityScore,
     Filter_ListElements,
     Filter_RowsNullEmpty,
+    Transform_CleanHtmlEntities,
     Transform_ClipValues,
     Transform_ColumnTypes,
     Transform_NormalizeColumn,
@@ -31,6 +32,8 @@ def consolidation():
 
     transformations = [
         Transform_ColumnTypes(columns=column_types),
+        # Clean HTML entities from description
+        Transform_CleanHtmlEntities(col="description"),
         # Add recommendation flag column (1 = recommend, 0 = don't recommend)
         Create_ConstantColumn(col="to_recommend", value=1),
         # Filter and flag based on ratings
