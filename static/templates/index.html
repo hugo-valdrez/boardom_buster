@@ -3,22 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boardom Buster</title>
+    <title>Boardom Buster - Board Game Recommendations</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
-    <h1>Boardom Buster</h1>
-    <div>
-        <input type="text" id="gameName" placeholder="Enter board game name..." autocomplete="off"/>
-        <button onclick="getRecommendations()">Search</button>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>BOARDOM BUSTER</h1>
+        </header>
+
+        <!-- Search Section (Initial State) -->
+        <section class="search-section" id="searchSection">
+            <div class="search-wrapper">
+                <div class="search-container">
+                    <input
+                        type="text"
+                        class="search-input"
+                        id="searchInput"
+                        placeholder="Search for a game..."
+                        autocomplete="off"
+                    >
+                    <div class="autocomplete-dropdown" id="autocompleteDropdown"></div>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="instructions" id="instructions">
+                <div class="instruction-step">
+                    <div class="instruction-number">1</div>
+                    <div class="instruction-icon">
+                        <img src="/static/images/SEARCH.png" alt="Search">
+                    </div>
+                    <div class="instruction-text">SEARCH</div>
+                    <div class="instruction-subtext">for a game you like</div>
+                </div>
+
+                <div class="instruction-arrow">→</div>
+
+                <div class="instruction-step">
+                    <div class="instruction-number">2</div>
+                    <div class="instruction-icon">
+                        <img src="/static/images/GET.png" alt="Get recommendations">
+                    </div>
+                    <div class="instruction-text">GET</div>
+                    <div class="instruction-subtext">personalized recommendations</div>
+                </div>
+
+                <div class="instruction-arrow">→</div>
+
+                <div class="instruction-step">
+                    <div class="instruction-number">3</div>
+                    <div class="instruction-icon">
+                        <img src="/static/images/EXPLORE.png" alt="Explore on BGG">
+                    </div>
+                    <div class="instruction-text">EXPLORE</div>
+                    <div class="instruction-subtext">& view on BoardGameGeek</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loading State -->
+        <section class="loading-section" id="loadingSection">
+            <div class="loading-dice">
+                <svg class="dice" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3">
+                    <rect x="10" y="10" width="80" height="80" rx="10"/>
+                    <circle cx="30" cy="30" r="6" fill="currentColor"/>
+                    <circle cx="70" cy="30" r="6" fill="currentColor"/>
+                    <circle cx="50" cy="50" r="6" fill="currentColor"/>
+                    <circle cx="30" cy="70" r="6" fill="currentColor"/>
+                    <circle cx="70" cy="70" r="6" fill="currentColor"/>
+                </svg>
+                <svg class="dice" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3">
+                    <rect x="10" y="10" width="80" height="80" rx="10"/>
+                    <circle cx="30" cy="30" r="6" fill="currentColor"/>
+                    <circle cx="70" cy="70" r="6" fill="currentColor"/>
+                </svg>
+            </div>
+            <div class="loading-text">Generating Recommendations...</div>
+        </section>
+
+        <!-- Results Section -->
+        <section class="results-section" id="resultsSection">
+            <div class="results-layout">
+                <!-- Selected Game -->
+                <div class="selected-game-card" id="selectedGameCard">
+                    <img class="selected-game-image" id="selectedGameImage" src="" alt="Selected game">
+                    <div class="selected-game-name" id="selectedGameName">*Game Name*</div>
+                </div>
+
+                <!-- Recommendations -->
+                <div class="recommendations-list" id="recommendationsList">
+                    <!-- Cards will be inserted here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Error State -->
+        <div class="error-message hidden" id="errorMessage"></div>
     </div>
 
-    <div id="searchResults"></div>
-    <div id="selectedGame"></div>
-
-    <div id="results"></div>
-
+    <!-- Fuse.js for fuzzy search -->
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
-
     <script src="/static/js/app.js"></script>
 </body>
 </html>

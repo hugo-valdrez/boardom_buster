@@ -21,3 +21,20 @@ class GameResponse(BaseModel):
     categories: list[str]
     bgg_link: str
     comment: str
+    image: Optional[str] = None
+    description: Optional[str] = None
+
+
+class InputGameInfo(BaseModel):
+    id: str
+    name: str
+    image: Optional[str] = None
+    description: Optional[str] = None
+    categories: Optional[list[str]] = None
+    mechanics: Optional[list[str]] = None
+    bgg_link: Optional[str] = None
+
+
+class RecommendationResponse(BaseModel):
+    input_game: InputGameInfo
+    recommendations: list[GameResponse]

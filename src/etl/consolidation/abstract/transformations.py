@@ -262,6 +262,38 @@ class Transform_ClipValues(BaseTransformation):
         )
 
 
+class Transform_CleanHtmlEntities(BaseTransformation):
+    """Clean HTML entities and normalize whitespace in text columns.
+
+    Handles common HTML entities like &#10; (newline), &#13; (carriage return),
+    &amp;, &lt;, &gt;, &quot;, etc.
+    """
+
+    def __init__(self, col: str):
+        self.col = col
+
+    def transform(self, df: pl.DataFrame) -> pl.DataFrame:
+        cleaned = (
+            pl.col(self.col)
+            # Replace numeric HTML entities for whitespace
+            .str.replace_all(r"&#10;", " ")
+            .str.replace_all(r"&#13;", " ")
+            .str.replace_all(r"&#9;", " ")
+            # Replace common named HTML entities
+            .str.replace_all(r"&amp;", "&")
+            .str.replace_all(r"&lt;", "<")
+            .str.replace_all(r"&gt;", ">")
+            .str.replace_all(r"&quot;", '"')
+            .str.replace_all(r"&apos;", "'")
+            .str.replace_all(r"&nbsp;", " ")
+            # Normalize multiple spaces to single space
+            .str.replace_all(r"\s+", " ")
+            # Trim leading/trailing whitespace
+            .str.strip_chars()
+        )
+        return df.with_columns(cleaned.alias(self.col))
+
+
 # ============================================================================
 # UPDATE TRANSFORMATIONS - Conditionally modify values in existing columns
 # ============================================================================
