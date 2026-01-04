@@ -2,6 +2,26 @@
 name = "boardom_buster"
 version = "0.1.0"
 requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "polars",
+    "scikit-learn",
+    "pydantic-settings",
+    "PyYAML",
+    "httpx",
+    "xmltodict",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "black",
+    "flake8",
+    "isort",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
