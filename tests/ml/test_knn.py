@@ -72,28 +72,28 @@ class TestKNNCandidateGenerator:
 
         assert knn.config is not None
         assert knn._model is None
-        assert knn._full_df is None
         assert knn._df is None
+        assert knn._recommendable_mask is None
 
     def test_fit(self, sample_game_data):
         """Test fitting the KNN model."""
         knn = KNNCandidateGenerator()
         knn.fit(sample_game_data)
 
-        assert knn._full_df is not None
         assert knn._df is not None
+        assert knn._recommendable_mask is not None
         assert knn._model is not None
         assert knn._feature_columns is not None
         assert len(knn._id_to_idx) > 0
 
     def test_fit_filters_recommendable(self, sample_game_data):
-        """Test that fit filters to only recommendable games."""
+        """Test that fit correctly identifies recommendable games."""
         knn = KNNCandidateGenerator()
         knn.fit(sample_game_data)
 
-        # Should only have 4 recommendable games (to_recommend=1)
-        assert knn._df.height == 4
-        assert all(knn._df["to_recommend"].to_list())
+        # Should have 4 recommendable games (to_recommend=1) tracked via df_size
+        assert knn.df_size == 4
+        assert knn._recommendable_mask.sum() == 4
 
     def test_detect_feature_columns(self, sample_game_data):
         """Test automatic feature column detection."""

@@ -16,7 +16,7 @@ router = APIRouter(tags=["recommendations"])
 async def get_all_games(recommender: BoardGameRecommender = Depends(get_recommender)):
     """Get all available games for client-side filtering."""
     try:
-        games_df = recommender._knn._full_df
+        games_df = recommender._knn._df
         results = games_df.select(["id", "name", "thumbnail_url"]).to_dicts()
         return results
     except Exception as e:

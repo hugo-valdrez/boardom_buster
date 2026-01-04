@@ -20,6 +20,8 @@ class TestRecommenderState:
     def test_initialize(self, mock_recommender_class):
         """Test the initialize method creates and loads recommender."""
         mock_recommender = Mock()
+        mock_recommender._knn._df = [1, 2, 3]  # Mock list for len()
+        mock_recommender._knn.df_size = 3
         mock_recommender_class.return_value = mock_recommender
 
         state = RecommenderState()

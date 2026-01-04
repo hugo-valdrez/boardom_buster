@@ -80,11 +80,11 @@ class KNNCandidateGenerator:
             ],
         )
         self._model: Optional[NearestNeighbors] = None
-        self._full_df: Optional[pl.DataFrame] = None  # All games (for input lookup)
-        self._df: Optional[pl.DataFrame] = None  # Only recommendable games (for KNN)
+        self._df: Optional[pl.DataFrame] = None  # All games (single source of truth)
+        self._recommendable_mask: Optional[pl.Series] = None  # Boolean mask for recommendable games
         self._feature_columns: Optional[List[str]] = None
-        self._id_to_idx: dict = {}  # Maps game_id to index in recommendable games
-        self._idx_to_id: dict = {}  # Maps index to game_id in recommendable games
+        self._id_to_idx: dict = {}  # Maps game_id to index in all games
+        self._idx_to_id: dict = {}  # Maps index to game_id in all games
 
     def fit(self, df: pl.DataFrame) -> "KNNCandidateGenerator":
         """Fit the KNN model on the dataset.
@@ -95,12 +95,12 @@ class KNNCandidateGenerator:
         Returns:
             self for method chaining.
         """
-        # Store full dataset (for looking up any game as input)
-        self._full_df = df
+        # Store single DataFrame
+        self._df = df
 
-        # Filter to only recommendable games for KNN model
-        self._df = df.filter(pl.col("to_recommend") == 1)
-        self.df_size = len(self._df)
+        # Store mask for recommendable games
+        self._recommendable_mask = df.select("to_recommend").to_series() == 1
+        self.df_size = self._recommendable_mask.sum()
 
         # Detect feature columns
         self._feature_columns = self._detect_feature_columns(self._df)
@@ -111,7 +111,7 @@ class KNNCandidateGenerator:
         self._idx_to_id = {idx: game_id for idx, game_id in enumerate(ids)}
 
         # Extract feature matrix
-        feature_matrix = self._full_df.select(self._feature_columns).to_numpy().astype(np.float32)
+        feature_matrix = self._df.select(self._feature_columns).to_numpy().astype(np.float16)
 
         # Fit the KNN model
         self._model = NearestNeighbors(
@@ -184,7 +184,7 @@ class KNNCandidateGenerator:
 
         # Get the feature vector for the input game
         input_features = input_game.select(self._feature_columns).row(0)
-        input_vector = np.array(input_features, dtype=np.float32).reshape(1, -1)
+        input_vector = np.array(input_features, dtype=np.float16).reshape(1, -1)
 
         # Find nearest neighbors (from recommendable games only)
         distances, indices = self._model.kneighbors(
@@ -200,12 +200,18 @@ class KNNCandidateGenerator:
 
         # Filter out the input game from candidates (don't recommend the same game)
         # Also filter out games from the same family if requested
+        # Also filter to only recommendable games
         filtered_ids = []
         filtered_distances = []
 
         for cid, dist in zip(candidate_ids, distances):
             # Skip the input game itself
             if cid == game_id:
+                continue
+
+            # Skip non-recommendable games
+            idx = self._id_to_idx.get(cid)
+            if idx is None or not self._recommendable_mask[idx]:
                 continue
 
             # Skip games from the same family if requested
@@ -222,7 +228,7 @@ class KNNCandidateGenerator:
             filtered_ids.append(cid)
             filtered_distances.append(dist)
 
-        # Build result DataFrame with all original columns
+        # Build result DataFrame with all original columns (only recommendable games)
         candidates = self._df.filter(pl.col("id").is_in(filtered_ids))
 
         # Add cosine distance column
@@ -251,7 +257,7 @@ class KNNCandidateGenerator:
         Returns:
             Single-row DataFrame with all columns for the game.
         """
-        result = self._full_df.filter(pl.col("id") == game_id)
+        result = self._df.filter(pl.col("id") == game_id)
 
         if result.height == 0:
             raise ValueError(f"Game ID '{game_id}' not found in dataset.")
