@@ -16,12 +16,13 @@ class TestRecommendationRequest:
         assert request.game_id == 123
         assert request.weights is None
         assert request.top_k == 5
+        assert request.exclude_same_family is True  # Default value
 
     def test_valid_request_with_weights(self):
         """Test valid request with custom weights."""
         weights = {
             "weight_cosine_similarity": 0.3,
-            "weight_year_similarity": 0.2,
+            "weight_difficulty_similarity": 0.2,
             "weight_playing_time_similarity": 0.1,
             "weight_rating": 0.25,
             "weight_popularity": 0.15,
@@ -31,6 +32,14 @@ class TestRecommendationRequest:
         assert request.game_id == 123
         assert request.weights == weights
         assert request.top_k == 10
+        assert request.exclude_same_family is True  # Default value
+
+    def test_request_exclude_same_family_false(self):
+        """Test request with exclude_same_family set to False."""
+        request = RecommendationRequest(game_id=123, top_k=5, exclude_same_family=False)
+
+        assert request.game_id == 123
+        assert request.exclude_same_family is False
 
     def test_request_without_top_k(self):
         """Test request defaults when top_k is not provided."""
@@ -59,7 +68,7 @@ class TestGameResponse:
             name="Catan",
             match_score=0.95,
             cosine_similarity=0.9,
-            year_similarity=0.85,
+            difficulty_similarity=0.85,
             playing_time_similarity=0.88,
             avg_rating=7.5,
             popularity=0.92,
@@ -72,7 +81,7 @@ class TestGameResponse:
         assert response.name == "Catan"
         assert response.match_score == 0.95
         assert response.cosine_similarity == 0.9
-        assert response.year_similarity == 0.85
+        assert response.difficulty_similarity == 0.85
         assert response.playing_time_similarity == 0.88
         assert response.avg_rating == 7.5
         assert response.popularity == 0.92
@@ -87,7 +96,7 @@ class TestGameResponse:
             name="Test Game",
             match_score=0.5,
             cosine_similarity=0.5,
-            year_similarity=0.5,
+            difficulty_similarity=0.5,
             playing_time_similarity=0.5,
             avg_rating=6.0,
             popularity=0.5,
@@ -116,7 +125,7 @@ class TestGameResponse:
                 name="Test Game",
                 match_score="not_a_float",  # Should be float
                 cosine_similarity=0.5,
-                year_similarity=0.5,
+                difficulty_similarity=0.5,
                 playing_time_similarity=0.5,
                 avg_rating=6.0,
                 popularity=0.5,

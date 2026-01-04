@@ -7,13 +7,14 @@ class RecommendationRequest(BaseModel):
     game_id: int
     weights: Optional[dict] = None
     top_k: int = None
+    exclude_same_family: bool = True
 
 
 class GameResponse(BaseModel):
     name: str
     match_score: float
     cosine_similarity: float
-    year_similarity: float
+    difficulty_similarity: float
     playing_time_similarity: float
     avg_rating: float
     popularity: float

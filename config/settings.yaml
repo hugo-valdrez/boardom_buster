@@ -44,6 +44,7 @@ etl:
       wanted_by: "int"
       wished_by: "int"
       publication_year: "int"
+      difficulty: "float"
 
   output:
     base_filename: "bgg"
@@ -51,7 +52,7 @@ etl:
 
 ml:
   knn:
-    n_neighbors: 50
+    n_neighbors: 200
     metric: "cosine"
     algorithm: "brute"
     excluded_columns:
@@ -74,11 +75,13 @@ ml:
       - "mechanics"
       - "categories"
       - "bgg_link"
+      - "family"
+      - "difficulty"
 
   reranker:
     weight_cosine_similarity: 0.30
-    weight_year_similarity: 0.10
-    weight_playing_time_similarity: 0.15
-    weight_rating: 0.25
-    weight_popularity: 0.20
+    weight_difficulty_similarity: 0.25
+    weight_playing_time_similarity: 0.10
+    weight_rating: 0.20
+    weight_popularity: 0.15
     top_k: 5

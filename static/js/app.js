@@ -14,6 +14,7 @@ let searchTimeout = null;
 // DOM Elements
 const searchInput = document.getElementById('searchInput');
 const autocompleteDropdown = document.getElementById('autocompleteDropdown');
+const excludeFamilyToggle = document.getElementById('excludeFamilyToggle');
 const instructions = document.getElementById('instructions');
 const loadingSection = document.getElementById('loadingSection');
 const resultsSection = document.getElementById('resultsSection');
@@ -205,7 +206,8 @@ async function getRecommendations() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 game_id: parseInt(selectedGame.id),
-                top_k: 5
+                top_k: 5,
+                exclude_same_family: excludeFamilyToggle.checked
             })
         });
 
@@ -382,7 +384,7 @@ function createRecommendationCard(game, index) {
 
                 <div class="metrics-list">
                     ${createMetricRow('Sim', game.cosine_similarity, 'How similar the game mechanics and categories are')}
-                    ${createMetricRow('Year', game.year_similarity, 'How close the release years are')}
+                    ${createMetricRow('Diff', game.difficulty_similarity, 'How close the difficulty levels are')}
                     ${createMetricRow('Time', game.playing_time_similarity, 'How similar the playing time is')}
                     ${createMetricRow('Rating', game.avg_rating, 'Community average rating')}
                     ${createMetricRow('Pop', game.popularity, 'Number of ratings/reviews')}
@@ -434,13 +436,13 @@ function drawRadarChart(canvasId, game) {
     // Data points (normalized 0-1)
     const data = [
         game.cosine_similarity || 0,
-        game.year_similarity || 0,
+        game.difficulty_similarity || 0,
         game.playing_time_similarity || 0,
         game.avg_rating || 0,
         game.popularity || 0
     ];
 
-    const labels = ['Sim', 'Year', 'Time', 'Rating', 'Pop'];
+    const labels = ['Sim', 'Diff', 'Time', 'Rating', 'Pop'];
     const numPoints = data.length;
     const angleStep = (2 * Math.PI) / numPoints;
     const startAngle = -Math.PI / 2;

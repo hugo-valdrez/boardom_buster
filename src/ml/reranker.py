@@ -19,7 +19,7 @@ class ReRankerConfig:
 
     Attributes:
         weight_cosine_similarity: Weight for KNN cosine similarity
-        weight_year_similarity: Weight for publication year similarity
+        weight_difficulty_similarity: Weight for difficulty similarity
         weight_playing_time_similarity: Weight for playing time similarity
         weight_rating: Weight for rating (uses bayesian if available, otherwise average)
         weight_popularity: Weight for popularity score
@@ -27,19 +27,21 @@ class ReRankerConfig:
     """
 
     weight_cosine_similarity: float = _RERANKER_DEFAULTS.get("weight_cosine_similarity", 0.30)
-    weight_year_similarity: float = _RERANKER_DEFAULTS.get("weight_year_similarity", 0.10)
-    weight_playing_time_similarity: float = _RERANKER_DEFAULTS.get(
-        "weight_playing_time_similarity", 0.15
+    weight_difficulty_similarity: float = _RERANKER_DEFAULTS.get(
+        "weight_difficulty_similarity", 0.25
     )
-    weight_rating: float = _RERANKER_DEFAULTS.get("weight_rating", 0.25)
-    weight_popularity: float = _RERANKER_DEFAULTS.get("weight_popularity", 0.20)
+    weight_playing_time_similarity: float = _RERANKER_DEFAULTS.get(
+        "weight_playing_time_similarity", 0.10
+    )
+    weight_rating: float = _RERANKER_DEFAULTS.get("weight_rating", 0.20)
+    weight_popularity: float = _RERANKER_DEFAULTS.get("weight_popularity", 0.15)
     top_k: int = _RERANKER_DEFAULTS.get("top_k", 5)
 
     def __post_init__(self):
         """Validate that all weights are non-negative."""
         weights = [
             self.weight_cosine_similarity,
-            self.weight_year_similarity,
+            self.weight_difficulty_similarity,
             self.weight_playing_time_similarity,
             self.weight_rating,
             self.weight_popularity,
@@ -49,23 +51,11 @@ class ReRankerConfig:
         if self.top_k < 1:
             raise ValueError("top_k must be at least 1")
 
-    @classmethod
-    def from_dict(cls, config: dict) -> "ReRankerConfig":
-        """Create config from a dictionary."""
-        return cls(
-            weight_cosine_similarity=config.get("weight_cosine_similarity", 0.30),
-            weight_year_similarity=config.get("weight_year_similarity", 0.10),
-            weight_playing_time_similarity=config.get("weight_playing_time_similarity", 0.15),
-            weight_rating=config.get("weight_rating", 0.25),
-            weight_popularity=config.get("weight_popularity", 0.20),
-            top_k=config.get("top_k", 5),
-        )
-
     def to_dict(self) -> dict:
         """Convert config to dictionary."""
         return {
             "weight_cosine_similarity": self.weight_cosine_similarity,
-            "weight_year_similarity": self.weight_year_similarity,
+            "weight_difficulty_similarity": self.weight_difficulty_similarity,
             "weight_playing_time_similarity": self.weight_playing_time_similarity,
             "weight_rating": self.weight_rating,
             "weight_popularity": self.weight_popularity,
@@ -82,7 +72,7 @@ class Columns:
     COSINE_DISTANCE = "cosine_distance"
 
     # Feature columns (already normalized in consolidation)
-    PUBLICATION_YEAR = "publication_year"
+    DIFFICULTY = "difficulty"
     PLAYING_TIME = "playing_time"
     BAYESIAN_RATING = "bayesian_avg_rating"
     AVG_RATING = "avg_rating"
@@ -90,7 +80,7 @@ class Columns:
 
     # Output columns (normalized relative to input game)
     COSINE_SIMILARITY = "cosine_similarity"
-    NORM_YEAR_SIMILARITY = "normalized_year_similarity"
+    NORM_DIFFICULTY_SIMILARITY = "normalized_difficulty_similarity"
     NORM_PLAYING_TIME_SIMILARITY = "normalized_playing_time_similarity"
     NORM_AVG_RATING = "normalized_avg_rating"
     NORM_POPULARITY = "normalized_popularity"
@@ -142,12 +132,14 @@ class ReRanker:
         # Compute final weighted score
         scored = self._compute_final_score(scored, weights)
 
-        # Sort by final score and return top-k
-        result = (
-            scored.sort(Columns.FINAL_SCORE, descending=True)
-            .head(top_k)
-            .select(self._output_columns())
-        )
+        # Sort by final score descending
+        scored = scored.sort(Columns.FINAL_SCORE, descending=True)
+
+        # Deduplicate by family: keep only the best-scoring game from each family
+        scored = self._deduplicate_by_family(scored)
+
+        # Return top-k
+        result = scored.head(top_k).select(self._output_columns())
         return result
 
     def _extract_features(self, game: pl.DataFrame) -> dict:
@@ -160,7 +152,7 @@ class ReRanker:
             rating = row.get(Columns.AVG_RATING)
 
         return {
-            Columns.PUBLICATION_YEAR: row.get(Columns.PUBLICATION_YEAR),
+            Columns.DIFFICULTY: row.get(Columns.DIFFICULTY),
             Columns.PLAYING_TIME: row.get(Columns.PLAYING_TIME),
             Columns.BAYESIAN_RATING: rating,
             Columns.POPULARITY_SCORE: row.get(Columns.POPULARITY_SCORE),
@@ -169,7 +161,7 @@ class ReRanker:
     def _compute_scores(self, candidates: pl.DataFrame, input_features: dict) -> pl.DataFrame:
         """Compute normalized scores for all candidates relative to input game."""
 
-        input_year = input_features.get(Columns.PUBLICATION_YEAR)
+        input_difficulty = input_features.get(Columns.DIFFICULTY)
         input_time = input_features.get(Columns.PLAYING_TIME)
         input_rating_expr = (
             pl.when(
@@ -183,8 +175,8 @@ class ReRanker:
         # Get min/max from candidates for normalization
         stats = candidates.select(
             [
-                pl.col(Columns.PUBLICATION_YEAR).min().alias("year_min"),
-                pl.col(Columns.PUBLICATION_YEAR).max().alias("year_max"),
+                pl.col(Columns.DIFFICULTY).min().alias("difficulty_min"),
+                pl.col(Columns.DIFFICULTY).max().alias("difficulty_max"),
                 pl.col(Columns.PLAYING_TIME).min().alias("time_min"),
                 pl.col(Columns.PLAYING_TIME).max().alias("time_max"),
                 input_rating_expr.min().alias("rating_min"),
@@ -200,10 +192,13 @@ class ReRanker:
             [
                 # Convert cosine distance to similarity: similarity = 1 - distance
                 (1.0 - pl.col(Columns.COSINE_DISTANCE)).alias(Columns.COSINE_SIMILARITY),
-                # Year similarity: 1 - |candidate_year - input_year| / max_diff
+                # Difficulty similarity: 1 - |candidate_difficulty - input_difficulty| / max_diff
                 self._similarity_expr(
-                    Columns.PUBLICATION_YEAR, input_year, stats["year_min"], stats["year_max"]
-                ).alias(Columns.NORM_YEAR_SIMILARITY),
+                    Columns.DIFFICULTY,
+                    input_difficulty,
+                    stats["difficulty_min"],
+                    stats["difficulty_max"],
+                ).alias(Columns.NORM_DIFFICULTY_SIMILARITY),
                 # Playing time similarity: 1 - |candidate_time - input_time| / max_diff
                 self._similarity_expr(
                     Columns.PLAYING_TIME, input_time, stats["time_min"], stats["time_max"]
@@ -257,20 +252,53 @@ class ReRanker:
             weights: Dict with weight values.
         """
         w_cosine = weights["weight_cosine_similarity"]
-        w_year = weights["weight_year_similarity"]
+        w_difficulty = weights["weight_difficulty_similarity"]
         w_time = weights["weight_playing_time_similarity"]
         w_rating = weights["weight_rating"]
         w_popularity = weights["weight_popularity"]
 
         score_expr = (
             pl.col(Columns.COSINE_SIMILARITY) * w_cosine
-            + pl.col(Columns.NORM_YEAR_SIMILARITY) * w_year
+            + pl.col(Columns.NORM_DIFFICULTY_SIMILARITY) * w_difficulty
             + pl.col(Columns.NORM_PLAYING_TIME_SIMILARITY) * w_time
             + pl.col(Columns.NORM_AVG_RATING) * w_rating
             + pl.col(Columns.NORM_POPULARITY) * w_popularity
         )
 
         return df.with_columns(score_expr.alias(Columns.FINAL_SCORE))
+
+    def _deduplicate_by_family(self, df: pl.DataFrame) -> pl.DataFrame:
+        """Keep only the highest-scoring game from each family.
+
+        Games without a family (null or empty) are all kept.
+        For games with families, only the first occurrence (highest score) is kept
+        for each unique family.
+
+        Args:
+            df: DataFrame sorted by final_score descending.
+
+        Returns:
+            DataFrame with at most one game per family.
+        """
+        seen_families: set = set()
+        rows_to_keep: list[int] = []
+
+        for idx, row in enumerate(df.iter_rows(named=True)):
+            family_value = row.get("family")
+
+            # If no family, always keep
+            if family_value is None or len(family_value) == 0:
+                rows_to_keep.append(idx)
+                continue
+
+            # Check if any of this game's families have been seen
+            game_families = set(family_value)
+            if game_families.isdisjoint(seen_families):
+                # No overlap with seen families, keep this game
+                rows_to_keep.append(idx)
+                seen_families.update(game_families)
+
+        return df[rows_to_keep]
 
     def _output_columns(self) -> list[str]:
         """Return list of columns to include in output."""
@@ -279,7 +307,7 @@ class ReRanker:
             "name",  # Include game name for display
             Columns.FINAL_SCORE,
             Columns.COSINE_SIMILARITY,
-            Columns.NORM_YEAR_SIMILARITY,
+            Columns.NORM_DIFFICULTY_SIMILARITY,
             Columns.NORM_PLAYING_TIME_SIMILARITY,
             Columns.NORM_AVG_RATING,
             Columns.NORM_POPULARITY,

@@ -28,6 +28,7 @@ body {
     color: var(--text-color);
     min-height: 100vh;
     padding: 20px;
+    padding-bottom: 70px;
 }
 
 /* Main Container */
@@ -59,7 +60,8 @@ body {
 
 .search-wrapper {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
     margin-bottom: 20px;
 }
 
@@ -149,6 +151,63 @@ body {
 
 .autocomplete-item-name {
     flex: 1;
+}
+
+/* Toggle Switch */
+.toggle-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.toggle-label input {
+    display: none;
+}
+
+.toggle-slider {
+    width: 44px;
+    height: 24px;
+    background: var(--text-muted);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    position: relative;
+    transition: background 0.3s;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.toggle-slider::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    top: 50%;
+    left: 2px;
+    transform: translateY(-50%);
+    transition: transform 0.3s;
+}
+
+.toggle-label input:checked + .toggle-slider {
+    background: var(--accent-color);
+}
+
+.toggle-label input:checked + .toggle-slider::after {
+    transform: translateY(-50%) translateX(20px);
+}
+
+.toggle-text {
+    font-size: 14px;
+    color: var(--text-color);
 }
 
 /* Instructions */
@@ -645,4 +704,27 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
     background: #555;
+}
+
+/* BGG Footer */
+.bgg-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--card-bg);
+    border-top: 2px solid var(--border-color);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 14px;
+    color: var(--text-muted);
+    z-index: 100;
+}
+
+.bgg-footer img {
+    height: 35px;
+    object-fit: contain;
 }

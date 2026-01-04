@@ -87,6 +87,8 @@ def consolidation():
         Create_OneHotFromList(col="categories"),
         Create_OneHotFromList(col="mechanics"),
         Create_BGGLink(col="id"),
+        # Filter difficulty
+        Filter_RowsNullEmpty(col="difficulty"),
     ]
 
     pipeline = TransformationsManager(transformations=transformations)

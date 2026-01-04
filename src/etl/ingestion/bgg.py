@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 import asyncio
+import gc
 import logging
 import os
 import sys
+import time
 from datetime import datetime
 from typing import Any, Dict, List
 
@@ -51,6 +53,7 @@ def prepare_data(response_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 "min_age": game.get("minage", {}).get("@value", ""),
                 "mechanics": [],
                 "categories": [],
+                "family": [],
             }
 
             if isinstance(game["name"], list):
@@ -75,6 +78,9 @@ def prepare_data(response_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                     game_data["mechanics"].append(link_value)
                 elif link_type == "boardgamecategory":
                     game_data["categories"].append(link_value)
+                elif link_type == "boardgamefamily":
+                    if link_value.startswith(("Game:")):
+                        game_data["family"].append(link_value)
 
             ratings = game.get("statistics", {}).get("ratings", {})
             game_data.update(
@@ -86,6 +92,7 @@ def prepare_data(response_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                     "owned_by": ratings.get("owned", {}).get("@value", ""),
                     "wanted_by": ratings.get("wanting", {}).get("@value", ""),
                     "wished_by": ratings.get("wishing", {}).get("@value", ""),
+                    "difficulty": ratings.get("averageweight", {}).get("@value", ""),
                 }
             )
 
@@ -209,7 +216,12 @@ async def continuous_fetch() -> List[Dict[str, Any]]:
     data_dir.mkdir(parents=True, exist_ok=True)
     parquet_path = data_dir / f"{execution_timekey}_bgg.parquet"
 
-    async with httpx.AsyncClient() as client:
+    headers = {}
+    bearer_token = os.getenv("BGG_BEARER_TOKEN")
+    if bearer_token:
+        headers["Authorization"] = f"Bearer {bearer_token}"
+
+    async with httpx.AsyncClient(headers=headers) as client:
         logger.info("Created HTTP client for batch requests")
         while consecutive_failures < max_consecutive_failures:
             try:
@@ -247,12 +259,34 @@ async def continuous_fetch() -> List[Dict[str, Any]]:
 
                 if batch_valid_results:
                     if os.path.exists(parquet_path):
-                        existing_data = pl.read_parquet(parquet_path)
+                        existing_data = pl.read_parquet(parquet_path, memory_map=False)
                         combined_df = pl.concat([existing_data, pl.DataFrame(valid_results)])
-                        combined_df.write_parquet(parquet_path, compression="lz4")
+
+                        ###
+                        del existing_data
+                        gc.collect()  # Force release of file handles
+
+                        # Write to temp file first to avoid Windows file locking issues
+                        temp_path = parquet_path.with_suffix(".parquet.tmp")
+                        combined_df.write_parquet(temp_path, compression="lz4")
+                        del combined_df
+                        gc.collect()  # Force release of file handles
+
+                        # Retry file replacement with backoff for Windows file locking
+                        for attempt in range(5):
+                            try:
+                                os.replace(temp_path, parquet_path)
+                                break
+                            except PermissionError:
+                                if attempt < 4:
+                                    time.sleep(0.5 * (attempt + 1))
+                                    gc.collect()
+                                else:
+                                    raise
                         logger.info(
                             f"Appended {batch_valid_results} new results to existing Parquet file: {parquet_path}"
                         )
+                        ###
                     else:
                         pl.DataFrame(valid_results).write_parquet(parquet_path, compression="lz4")
                         logger.info(

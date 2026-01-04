@@ -6,6 +6,7 @@ pydantic-settings
 PyYAML
 httpx
 xmltodict
+python-dotenv
 pytest
 pytest-cov
 black

@@ -15,12 +15,12 @@ class KNNConfig:
     """Configuration for the KNN candidate generator.
 
     Attributes:
-        n_neighbors: Number of nearest neighbors to return (default: 50)
+        n_neighbors: Number of nearest neighbors to return (default: 200)
         metric: Distance metric to use (default: 'cosine')
         algorithm: Algorithm for nearest neighbor search (default: 'brute')
     """
 
-    n_neighbors: int = _KNN_DEFAULTS.get("n_neighbors", 50)
+    n_neighbors: int = _KNN_DEFAULTS.get("n_neighbors", 200)
     metric: str = _KNN_DEFAULTS.get("metric", "cosine")
     algorithm: str = _KNN_DEFAULTS.get("algorithm", "brute")
 
@@ -75,6 +75,8 @@ class KNNCandidateGenerator:
                 "mechanics",
                 "categories",
                 "bgg_link",
+                "family",
+                "difficulty",
             ],
         )
         self._model: Optional[NearestNeighbors] = None
@@ -98,6 +100,7 @@ class KNNCandidateGenerator:
 
         # Filter to only recommendable games for KNN model
         self._df = df.filter(pl.col("to_recommend") == 1)
+        self.df_size = len(self._df)
 
         # Detect feature columns
         self._feature_columns = self._detect_feature_columns(self._df)
@@ -108,11 +111,10 @@ class KNNCandidateGenerator:
         self._idx_to_id = {idx: game_id for idx, game_id in enumerate(ids)}
 
         # Extract feature matrix
-        feature_matrix = df.select(self._feature_columns).to_numpy().astype(np.float32)
+        feature_matrix = self._full_df.select(self._feature_columns).to_numpy().astype(np.float32)
 
         # Fit the KNN model
         self._model = NearestNeighbors(
-            n_neighbors=min(self.config.n_neighbors + 1, len(self._df)),  # +1 to exclude self
             metric=self.config.metric,
             algorithm=self.config.algorithm,
         )
@@ -150,7 +152,9 @@ class KNNCandidateGenerator:
 
         return feature_cols
 
-    def get_candidates(self, game_id: str, n_candidates: Optional[int] = None) -> pl.DataFrame:
+    def get_candidates(
+        self, game_id: str, n_candidates: Optional[int] = None, exclude_same_family: bool = True
+    ) -> pl.DataFrame:
         """Get KNN candidates for a given game.
 
         The input game can be any game in the dataset (to_recommend=0 or 1),
@@ -159,6 +163,8 @@ class KNNCandidateGenerator:
         Args:
             game_id: The ID of the input game.
             n_candidates: Number of candidates to return. Defaults to config.n_neighbors.
+            exclude_same_family: If True, exclude games that share any family with the input game.
+                Defaults to True.
 
         Returns:
             DataFrame with candidate games and their cosine distances.
@@ -169,13 +175,20 @@ class KNNCandidateGenerator:
 
         n_candidates = n_candidates or self.config.n_neighbors
 
+        # Get input game's families for filtering (if needed)
+        input_families: set = set()
+        if exclude_same_family:
+            family_value = input_game.select("family").row(0)[0]
+            if family_value is not None:
+                input_families = set(family_value)
+
         # Get the feature vector for the input game
         input_features = input_game.select(self._feature_columns).row(0)
         input_vector = np.array(input_features, dtype=np.float32).reshape(1, -1)
 
         # Find nearest neighbors (from recommendable games only)
         distances, indices = self._model.kneighbors(
-            input_vector, n_neighbors=min(n_candidates + 1, len(self._df))
+            input_vector, n_neighbors=min(n_candidates + 1, self.df_size)
         )
 
         # Flatten results
@@ -186,19 +199,35 @@ class KNNCandidateGenerator:
         candidate_ids = [self._idx_to_id[i] for i in indices]
 
         # Filter out the input game from candidates (don't recommend the same game)
-        filtered_ids = [cid for cid in candidate_ids if cid != game_id]
-        filtered_distances = [dist for cid, dist in zip(candidate_ids, distances) if cid != game_id]
+        # Also filter out games from the same family if requested
+        filtered_ids = []
+        filtered_distances = []
 
-        # Take only the requested number after filtering
-        candidate_ids = filtered_ids[:n_candidates]
-        distances = filtered_distances[:n_candidates]
+        for cid, dist in zip(candidate_ids, distances):
+            # Skip the input game itself
+            if cid == game_id:
+                continue
+
+            # Skip games from the same family if requested
+            if exclude_same_family and input_families:
+                candidate_row = self._df.filter(pl.col("id") == cid)
+                if candidate_row.height > 0:
+                    candidate_families = candidate_row.select("family").row(0)[0]
+                    if candidate_families is not None:
+                        candidate_family_set = set(candidate_families)
+                        # Check if there's any intersection
+                        if input_families & candidate_family_set:
+                            continue
+
+            filtered_ids.append(cid)
+            filtered_distances.append(dist)
 
         # Build result DataFrame with all original columns
-        candidates = self._df.filter(pl.col("id").is_in(candidate_ids))
+        candidates = self._df.filter(pl.col("id").is_in(filtered_ids))
 
         # Add cosine distance column
         # Create a mapping of id to distance
-        id_to_dist = dict(zip(candidate_ids, distances))
+        id_to_dist = dict(zip(filtered_ids, filtered_distances))
 
         # Map distances to the dataframe - create a proper distance column
         distance_series = [
