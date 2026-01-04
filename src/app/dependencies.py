@@ -9,8 +9,12 @@ class RecommenderState:
 
     def initialize(self):
         """Initialize and load the recommender."""
+        print("Initializing BoardGameRecommender...")
         self.recommender = BoardGameRecommender()
+        print("Loading game data...")
         self.recommender.load_data()
+        print(f"Recommender ready! Loaded {len(self.recommender._knn._df)} games")
+        print(f"- Recommendable games: {self.recommender._knn.df_size}")
 
     def reload(self):
         """Reload the recommender with fresh data."""

@@ -24,7 +24,9 @@ class BoardGameRecommender:
             knn_config: Configuration for KNN. Uses defaults from settings.yaml if None.
             reranker_config: Configuration for ReRanker. Uses defaults from settings.yaml if None.
         """
+        print("  - Creating KNN candidate generator...")
         self._knn = KNNCandidateGenerator()
+        print("  - Creating re-ranker...")
         self._reranker = ReRanker()
         self._is_fitted = False
 
@@ -35,8 +37,16 @@ class BoardGameRecommender:
             self for method chaining.
         """
         data_dir = settings.PATHS["processed_data"]
+        print(f"  - Reading data from: {data_dir}")
         writer_reader = WriterReaderFactory.create_from_directory(data_dir)
         df = writer_reader.read()
+        print(f"  - Loaded {len(df)} games from parquet file")
+
+        # Memory optimization: truncate long text fields that aren't needed for ML
+        # Keep first 300 chars of description for display purposes
+        if "description" in df.columns:
+            print("  - Truncating descriptions to save memory...")
+            df = df.with_columns(pl.col("description").str.slice(0, 300).alias("description"))
 
         return self.fit(df)
 
@@ -49,8 +59,10 @@ class BoardGameRecommender:
         Returns:
             self for method chaining.
         """
+        print("  - Fitting KNN model...")
         self._knn.fit(df)
         self._is_fitted = True
+        print("  - Model fitted successfully")
         return self
 
     def recommend(
