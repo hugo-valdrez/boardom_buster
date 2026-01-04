@@ -14,7 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifespan context for the application."""
+    """Initialize the recommender on startup."""
     state.initialize()
     yield
 
