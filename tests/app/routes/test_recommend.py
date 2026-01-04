@@ -8,7 +8,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from src.app.routes.recommend import get_recommendations, router
-from src.app.schemas import GameResponse, RecommendationRequest
+from src.app.schemas import GameResponse, RecommendationRequest, RecommendationResponse
 from src.ml.recommender import BoardGameRecommender
 
 
@@ -16,8 +16,21 @@ from src.ml.recommender import BoardGameRecommender
 def mock_recommender():
     """Fixture for a mock recommender."""
     recommender = Mock(spec=BoardGameRecommender)
-    # Mock the _knn attribute and its get_input_game method
+    # Setup _knn mock for get_input_game
     recommender._knn = Mock()
+    recommender._knn.get_input_game = Mock(
+        return_value=pl.DataFrame(
+            {
+                "id": ["123"],
+                "name": ["Input Game"],
+                "image_url": ["https://example.com/input.jpg"],
+                "description": ["Input game description"],
+                "categories": [["Strategy"]],
+                "mechanics": [["Trading"]],
+                "bgg_link": ["https://boardgamegeek.com/boardgame/123"],
+            }
+        )
+    )
     return recommender
 
 
@@ -68,6 +81,12 @@ def sample_recommendation_data():
                 "An area control war game",
             ],
             "comment": ["Great game!", "Fun for families!", "Deep strategy!"],
+            "image_url": [
+                "https://example.com/image1.jpg",
+                "https://example.com/image2.jpg",
+                "https://example.com/image3.jpg",
+            ],
+            "description": ["Desc 1", "Desc 2", "Desc 3"],
         }
     )
 
@@ -88,11 +107,12 @@ class TestGetRecommendations:
             request = RecommendationRequest(game_id=123, top_k=3)
             result = await get_recommendations(request, mock_recommender)
 
+            assert isinstance(result, RecommendationResponse)
+            assert result.input_game.name == "Input Game"
             assert len(result.recommendations) == 3
             assert isinstance(result.recommendations[0], GameResponse)
             assert result.recommendations[0].name == "Game 1"
             assert result.recommendations[0].match_score == 0.95
-            assert result.input_game.name == "Input Game"
 
             mock_recommender.recommend.assert_called_once_with(
                 game_id="123", weights=None, top_k=3, exclude_same_family=True
@@ -121,6 +141,7 @@ class TestGetRecommendations:
 
             result = await get_recommendations(request, mock_recommender)
 
+            assert isinstance(result, RecommendationResponse)
             assert len(result.recommendations) == 3
             mock_recommender.recommend.assert_called_once_with(
                 game_id="456", weights=weights, top_k=3, exclude_same_family=True
@@ -133,6 +154,7 @@ class TestGetRecommendations:
         import asyncio
 
         async def run_test():
+            # Mock _knn.get_input_game to raise ValueError
             mock_recommender._knn.get_input_game.side_effect = ValueError("Game not found")
 
             request = RecommendationRequest(game_id=999, top_k=5)
@@ -150,7 +172,7 @@ class TestGetRecommendations:
         import asyncio
 
         async def run_test():
-            mock_recommender.recommend.side_effect = RuntimeError("Unexpected error")
+            mock_recommender._knn.get_input_game.side_effect = RuntimeError("Unexpected error")
 
             request = RecommendationRequest(game_id=123, top_k=5)
 
@@ -165,7 +187,7 @@ class TestGetRecommendations:
     def test_get_recommendations_response_structure(
         self, mock_recommender, sample_recommendation_data, sample_input_game_data
     ):
-        """Test that response matches GameResponse schema."""
+        """Test that response matches RecommendationResponse schema."""
         import asyncio
 
         async def run_test():
@@ -175,6 +197,18 @@ class TestGetRecommendations:
             request = RecommendationRequest(game_id=123, top_k=3)
             result = await get_recommendations(request, mock_recommender)
 
+            # Check response structure
+            assert isinstance(result, RecommendationResponse)
+            assert hasattr(result, "input_game")
+            assert hasattr(result, "recommendations")
+
+            # Check input_game structure
+            assert hasattr(result.input_game, "id")
+            assert hasattr(result.input_game, "name")
+            assert hasattr(result.input_game, "image")
+            assert hasattr(result.input_game, "description")
+
+            # Check recommendations structure
             for game in result.recommendations:
                 assert hasattr(game, "name")
                 assert hasattr(game, "match_score")

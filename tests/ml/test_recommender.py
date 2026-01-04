@@ -42,25 +42,18 @@ def sample_processed_data():
                 "https://boardgamegeek.com/boardgame/5",
             ],
             "image_url": [
-                "https://cf.geekdo-images.com/1.jpg",
-                "https://cf.geekdo-images.com/2.jpg",
-                "https://cf.geekdo-images.com/3.jpg",
-                "https://cf.geekdo-images.com/4.jpg",
-                "https://cf.geekdo-images.com/5.jpg",
-            ],
-            "thumbnail_url": [
-                "https://cf.geekdo-images.com/thumb1.jpg",
-                "https://cf.geekdo-images.com/thumb2.jpg",
-                "https://cf.geekdo-images.com/thumb3.jpg",
-                "https://cf.geekdo-images.com/thumb4.jpg",
-                "https://cf.geekdo-images.com/thumb5.jpg",
+                "https://example.com/image1.jpg",
+                "https://example.com/image2.jpg",
+                "https://example.com/image3.jpg",
+                "https://example.com/image4.jpg",
+                "https://example.com/image5.jpg",
             ],
             "description": [
-                "A strategic trading game",
-                "A fun dice rolling game",
-                "An area control war game",
-                "A hand management party game",
-                "An economic voting game",
+                "Description 1",
+                "Description 2",
+                "Description 3",
+                "Description 4",
+                "Description 5",
             ],
         }
     )
@@ -90,14 +83,14 @@ def sample_knn_results():
                 "https://boardgamegeek.com/boardgame/4",
             ],
             "image_url": [
-                "https://cf.geekdo-images.com/2.jpg",
-                "https://cf.geekdo-images.com/3.jpg",
-                "https://cf.geekdo-images.com/4.jpg",
+                "https://example.com/image2.jpg",
+                "https://example.com/image3.jpg",
+                "https://example.com/image4.jpg",
             ],
             "description": [
-                "A fun dice rolling game",
-                "An area control war game",
-                "A hand management party game",
+                "Description 2",
+                "Description 3",
+                "Description 4",
             ],
         }
     )
@@ -179,7 +172,9 @@ class TestBoardGameRecommender:
 
         # Add required columns to mock
         result_with_metadata = sample_reranked_results.join(
-            sample_knn_results.select(["id", "mechanics", "categories", "bgg_link"]),
+            sample_knn_results.select(
+                ["id", "mechanics", "categories", "bgg_link", "image_url", "description"]
+            ),
             on="id",
             how="left",
         )
@@ -213,8 +208,8 @@ class TestBoardGameRecommender:
                     "categories": [["Family"]],
                     "family": [[]],
                     "bgg_link": ["https://bgg.com/2"],
-                    "image_url": ["https://cf.geekdo-images.com/2.jpg"],
-                    "description": ["A fun dice rolling game"],
+                    "image_url": ["https://example.com/image2.jpg"],
+                    "description": ["Description 2"],
                 }
             )
         )
@@ -272,8 +267,8 @@ class TestBoardGameRecommender:
                     "categories": [["Family"]],
                     "family": [[]],
                     "bgg_link": ["https://bgg.com/2"],
-                    "image_url": ["https://cf.geekdo-images.com/2.jpg"],
-                    "description": ["A fun dice rolling game"],
+                    "image_url": ["https://example.com/image2.jpg"],
+                    "description": ["Description 2"],
                 }
             )
         )
