@@ -26,6 +26,13 @@
                     >
                     <div class="autocomplete-dropdown" id="autocompleteDropdown"></div>
                 </div>
+                <div class="toggle-container">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="excludeFamilyToggle" checked>
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-text">Exclude games from the same family</span>
+                    </label>
+                </div>
             </div>
 
             <!-- Instructions -->
@@ -102,6 +109,13 @@
         <!-- Error State -->
         <div class="error-message hidden" id="errorMessage"></div>
     </div>
+
+    <!-- Footer -->
+    <footer class="bgg-footer">
+        <a href="https://boardgamegeek.com" target="_blank" rel="noopener noreferrer">
+            <img src="/static/images/BGG.png" alt="BoardGameGeek">
+        </a>
+    </footer>
 
     <!-- Fuse.js for fuzzy search -->
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>

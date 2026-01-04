@@ -14,8 +14,8 @@ def sample_game_data():
             "id": ["1", "2", "3", "4", "5"],
             "name": ["Game 1", "Game 2", "Game 3", "Game 4", "Game 5"],
             "to_recommend": [1, 1, 1, 1, 0],  # Last game not recommendable
-            "feature_1": [1.0, 0.8, 0.9, 0.7, 0.5],
-            "feature_2": [0.5, 0.6, 0.5, 0.4, 0.3],
+            "feature_1": [1.0, 0.95, 0.5, 0.6, 0.3],
+            "feature_2": [0.5, 0.48, 0.8, 0.7, 0.9],
             "publication_year": [2015, 2016, 2017, 2018, 2019],
             "playing_time": [60, 45, 90, 30, 120],
             "avg_rating": [7.5, 8.0, 7.0, 6.5, 7.8],
@@ -23,6 +23,7 @@ def sample_game_data():
             "mechanics": [["A"], ["B"], ["C"], ["D"], ["E"]],
             "categories": [["X"], ["Y"], ["Z"], ["W"], ["V"]],
             "bayesian_avg_rating": [7.6, 8.1, 7.1, 6.6, 7.9],
+            "family": [["Game: Catan"], ["Game: Catan"], [], ["Game: Ticket to Ride"], []],
         }
     )
 
@@ -168,7 +169,8 @@ class TestKNNCandidateGenerator:
         knn = KNNCandidateGenerator()
         knn.fit(sample_game_data)
 
-        candidates = knn.get_candidates("1", n_candidates=1)
+        # Disable family exclusion to ensure we get the requested number
+        candidates = knn.get_candidates("1", n_candidates=1, exclude_same_family=False)
 
         assert candidates.height == 1
 
@@ -188,3 +190,47 @@ class TestKNNCandidateGenerator:
         result = knn.fit(sample_game_data)
 
         assert result is knn
+
+    def test_exclude_same_family_default(self, sample_game_data):
+        """Test that games from the same family are excluded by default."""
+        knn = KNNCandidateGenerator()
+        knn.fit(sample_game_data)
+
+        # Game 1 and Game 2 share "Game: Catan" family
+        candidates = knn.get_candidates("1", n_candidates=3)
+
+        # Game 2 should not be in candidates (same family)
+        assert "2" not in candidates["id"].to_list()
+
+    def test_exclude_same_family_disabled(self, sample_game_data):
+        """Test that games from the same family are included when disabled."""
+        knn = KNNCandidateGenerator()
+        knn.fit(sample_game_data)
+
+        # Game 1 and Game 2 share "Game: Catan" family
+        candidates = knn.get_candidates("1", n_candidates=3, exclude_same_family=False)
+
+        # Game 2 should be in candidates when family exclusion is disabled
+        assert "2" in candidates["id"].to_list()
+
+    def test_exclude_same_family_empty_family(self, sample_game_data):
+        """Test games with empty family lists work correctly."""
+        knn = KNNCandidateGenerator()
+        knn.fit(sample_game_data)
+
+        # Game 3 has empty family, should include all recommendable games
+        candidates = knn.get_candidates("3", n_candidates=3)
+
+        # Should not exclude any games based on family
+        assert candidates.height >= 1
+
+    def test_exclude_same_family_no_intersection(self, sample_game_data):
+        """Test games with different families are not excluded."""
+        knn = KNNCandidateGenerator()
+        knn.fit(sample_game_data)
+
+        # Game 1 (Catan) and Game 4 (Ticket to Ride) have different families
+        candidates = knn.get_candidates("1", n_candidates=3)
+
+        # Game 4 should be in candidates (different family)
+        assert "4" in candidates["id"].to_list()

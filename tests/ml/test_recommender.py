@@ -24,6 +24,7 @@ def sample_processed_data():
             "avg_rating": [7.5, 8.0, 7.0, 6.5, 7.2],
             "bayesian_avg_rating": [7.6, 8.1, 7.1, 6.6, 7.3],
             "popularity_score": [0.8, 0.9, 0.7, 0.6, 0.65],
+            "difficulty": [2.5, 3.0, 2.0, 1.5, 3.5],
             "mechanics": [
                 ["Trading"],
                 ["Dice Rolling"],
@@ -32,12 +33,34 @@ def sample_processed_data():
                 ["Voting"],
             ],
             "categories": [["Strategy"], ["Family"], ["War"], ["Party"], ["Economic"]],
+            "family": [[], [], [], [], []],
             "bgg_link": [
                 "https://boardgamegeek.com/boardgame/1",
                 "https://boardgamegeek.com/boardgame/2",
                 "https://boardgamegeek.com/boardgame/3",
                 "https://boardgamegeek.com/boardgame/4",
                 "https://boardgamegeek.com/boardgame/5",
+            ],
+            "image_url": [
+                "https://cf.geekdo-images.com/1.jpg",
+                "https://cf.geekdo-images.com/2.jpg",
+                "https://cf.geekdo-images.com/3.jpg",
+                "https://cf.geekdo-images.com/4.jpg",
+                "https://cf.geekdo-images.com/5.jpg",
+            ],
+            "thumbnail_url": [
+                "https://cf.geekdo-images.com/thumb1.jpg",
+                "https://cf.geekdo-images.com/thumb2.jpg",
+                "https://cf.geekdo-images.com/thumb3.jpg",
+                "https://cf.geekdo-images.com/thumb4.jpg",
+                "https://cf.geekdo-images.com/thumb5.jpg",
+            ],
+            "description": [
+                "A strategic trading game",
+                "A fun dice rolling game",
+                "An area control war game",
+                "A hand management party game",
+                "An economic voting game",
             ],
         }
     )
@@ -56,13 +79,25 @@ def sample_knn_results():
             "avg_rating": [8.0, 7.0, 6.5],
             "bayesian_avg_rating": [8.1, 7.1, 6.6],
             "popularity_score": [0.9, 0.7, 0.6],
+            "difficulty": [3.0, 2.0, 1.5],
             "to_recommend": [1, 1, 1],
             "mechanics": [["Dice Rolling"], ["Area Control"], ["Hand Management"]],
             "categories": [["Family"], ["War"], ["Party"]],
+            "family": [[], [], []],
             "bgg_link": [
                 "https://boardgamegeek.com/boardgame/2",
                 "https://boardgamegeek.com/boardgame/3",
                 "https://boardgamegeek.com/boardgame/4",
+            ],
+            "image_url": [
+                "https://cf.geekdo-images.com/2.jpg",
+                "https://cf.geekdo-images.com/3.jpg",
+                "https://cf.geekdo-images.com/4.jpg",
+            ],
+            "description": [
+                "A fun dice rolling game",
+                "An area control war game",
+                "A hand management party game",
             ],
         }
     )
@@ -77,7 +112,7 @@ def sample_reranked_results():
             "name": ["Game 2", "Game 3", "Game 4"],
             "final_score": [0.95, 0.88, 0.82],
             "cosine_similarity": [0.9, 0.8, 0.7],
-            "normalized_year_similarity": [0.85, 0.80, 0.75],
+            "normalized_difficulty_similarity": [0.85, 0.80, 0.75],
             "normalized_playing_time_similarity": [0.88, 0.82, 0.78],
             "normalized_avg_rating": [0.95, 0.85, 0.75],
             "normalized_popularity": [0.92, 0.82, 0.72],
@@ -172,10 +207,14 @@ class TestBoardGameRecommender:
                     "avg_rating": [8.0],
                     "bayesian_avg_rating": [8.1],
                     "popularity_score": [0.9],
+                    "difficulty": [3.0],
                     "to_recommend": [1],
                     "mechanics": [["Dice"]],
                     "categories": [["Family"]],
+                    "family": [[]],
                     "bgg_link": ["https://bgg.com/2"],
+                    "image_url": ["https://cf.geekdo-images.com/2.jpg"],
+                    "description": ["A fun dice rolling game"],
                 }
             )
         )
@@ -189,7 +228,7 @@ class TestBoardGameRecommender:
                     "name": ["Game 2"],
                     "final_score": [0.9],
                     "cosine_similarity": [0.9],
-                    "normalized_year_similarity": [0.8],
+                    "normalized_difficulty_similarity": [0.8],
                     "normalized_playing_time_similarity": [0.85],
                     "normalized_avg_rating": [0.95],
                     "normalized_popularity": [0.9],
@@ -199,9 +238,9 @@ class TestBoardGameRecommender:
 
         custom_weights = {
             "weight_cosine_similarity": 0.5,
-            "weight_year_similarity": 0.1,
+            "weight_difficulty_similarity": 0.2,
             "weight_playing_time_similarity": 0.1,
-            "weight_rating": 0.2,
+            "weight_rating": 0.1,
             "weight_popularity": 0.1,
         }
 
@@ -227,10 +266,14 @@ class TestBoardGameRecommender:
                     "avg_rating": [8.0],
                     "bayesian_avg_rating": [8.1],
                     "popularity_score": [0.9],
+                    "difficulty": [3.0],
                     "to_recommend": [1],
                     "mechanics": [["Dice"]],
                     "categories": [["Family"]],
+                    "family": [[]],
                     "bgg_link": ["https://bgg.com/2"],
+                    "image_url": ["https://cf.geekdo-images.com/2.jpg"],
+                    "description": ["A fun dice rolling game"],
                 }
             )
         )
@@ -244,7 +287,7 @@ class TestBoardGameRecommender:
                     "name": ["Game 2"],
                     "final_score": [0.9],
                     "cosine_similarity": [0.9],
-                    "normalized_year_similarity": [0.8],
+                    "normalized_difficulty_similarity": [0.8],
                     "normalized_playing_time_similarity": [0.85],
                     "normalized_avg_rating": [0.95],
                     "normalized_popularity": [0.9],

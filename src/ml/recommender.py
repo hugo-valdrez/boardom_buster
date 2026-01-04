@@ -59,6 +59,7 @@ class BoardGameRecommender:
         n_candidates: Optional[int] = None,
         top_k: Optional[int] = None,
         weights: Optional[dict] = None,
+        exclude_same_family: bool = True,
     ) -> pl.DataFrame:
         """Get recommendations for a game.
 
@@ -66,18 +67,21 @@ class BoardGameRecommender:
             game_id: The ID of the input game.
             n_candidates: Number of KNN candidates to consider. Defaults to config.
             top_k: Number of final recommendations. Defaults to reranker config.
+            weights: Custom weights for reranking. Defaults to reranker config.
+            exclude_same_family: If True, exclude games that share any family with the input game.
+                Defaults to True.
 
         Returns:
             DataFrame with top-k recommendations, including:
             - id, final_score, cosine_similarity
-            - normalized_year_similarity, normalized_playing_time_similarity
+            - normalized_difficulty_similarity, normalized_playing_time_similarity
             - normalized_bayesian_rating, normalized_popularity
         """
         if not self._is_fitted:
             raise RuntimeError("Recommender not fitted. Call fit() or load_data() first.")
 
         # Get KNN candidates
-        candidates = self._knn.get_candidates(game_id, n_candidates)
+        candidates = self._knn.get_candidates(game_id, n_candidates, exclude_same_family)
 
         # Get input game for re-ranking context
         input_game = self._knn.get_input_game(game_id)

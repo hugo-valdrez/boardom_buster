@@ -13,7 +13,7 @@ def sample_input_game():
         {
             "id": ["1"],
             "name": ["Input Game"],
-            "publication_year": [2018],
+            "difficulty": [2.5],
             "playing_time": [60],
             "bayesian_avg_rating": [7.5],
             "avg_rating": [7.3],
@@ -30,7 +30,7 @@ def sample_candidates():
             "id": ["2", "3", "4"],
             "name": ["Candidate 1", "Candidate 2", "Candidate 3"],
             "cosine_distance": [0.1, 0.2, 0.3],
-            "publication_year": [2017, 2019, 2020],
+            "difficulty": [2.3, 2.8, 3.2],
             "playing_time": [55, 70, 45],
             "bayesian_avg_rating": [7.8, 7.2, 6.9],
             "avg_rating": [7.6, 7.0, 6.7],
@@ -47,7 +47,7 @@ class TestReRankerConfig:
         config = ReRankerConfig()
 
         assert config.weight_cosine_similarity >= 0
-        assert config.weight_year_similarity >= 0
+        assert config.weight_difficulty_similarity >= 0
         assert config.weight_playing_time_similarity >= 0
         assert config.weight_rating >= 0
         assert config.weight_popularity >= 0
@@ -57,15 +57,15 @@ class TestReRankerConfig:
         """Test custom configuration values."""
         config = ReRankerConfig(
             weight_cosine_similarity=0.4,
-            weight_year_similarity=0.1,
+            weight_difficulty_similarity=0.2,
             weight_playing_time_similarity=0.1,
-            weight_rating=0.3,
+            weight_rating=0.2,
             weight_popularity=0.1,
             top_k=10,
         )
 
         assert config.weight_cosine_similarity == 0.4
-        assert config.weight_year_similarity == 0.1
+        assert config.weight_difficulty_similarity == 0.2
         assert config.top_k == 10
 
     def test_negative_weights_error(self):
@@ -78,28 +78,15 @@ class TestReRankerConfig:
         with pytest.raises(ValueError, match="top_k must be at least 1"):
             ReRankerConfig(top_k=0)
 
-    def test_from_dict(self):
-        """Test creating config from dictionary."""
-        config_dict = {
-            "weight_cosine_similarity": 0.35,
-            "weight_year_similarity": 0.15,
-            "weight_playing_time_similarity": 0.1,
-            "weight_rating": 0.25,
-            "weight_popularity": 0.15,
-            "top_k": 8,
-        }
-        config = ReRankerConfig.from_dict(config_dict)
-
-        assert config.weight_cosine_similarity == 0.35
-        assert config.top_k == 8
-
     def test_to_dict(self):
         """Test converting config to dictionary."""
-        config = ReRankerConfig(weight_cosine_similarity=0.4, weight_year_similarity=0.2, top_k=7)
+        config = ReRankerConfig(
+            weight_cosine_similarity=0.4, weight_difficulty_similarity=0.2, top_k=7
+        )
         config_dict = config.to_dict()
 
         assert config_dict["weight_cosine_similarity"] == 0.4
-        assert config_dict["weight_year_similarity"] == 0.2
+        assert config_dict["weight_difficulty_similarity"] == 0.2
         assert config_dict["top_k"] == 7
 
 
@@ -110,7 +97,7 @@ class TestColumns:
         """Test that all column name constants are defined."""
         assert hasattr(Columns, "GAME_ID")
         assert hasattr(Columns, "COSINE_DISTANCE")
-        assert hasattr(Columns, "PUBLICATION_YEAR")
+        assert hasattr(Columns, "DIFFICULTY")
         assert hasattr(Columns, "PLAYING_TIME")
         assert hasattr(Columns, "BAYESIAN_RATING")
         assert hasattr(Columns, "AVG_RATING")
@@ -163,7 +150,7 @@ class TestReRanker:
 
         # Check that all normalized columns are in [0, 1]
         for col in [
-            Columns.NORM_YEAR_SIMILARITY,
+            Columns.NORM_DIFFICULTY_SIMILARITY,
             Columns.NORM_PLAYING_TIME_SIMILARITY,
             Columns.NORM_AVG_RATING,
             Columns.NORM_POPULARITY,
@@ -200,7 +187,7 @@ class TestReRanker:
         invalid_input = pl.DataFrame(
             {
                 "id": ["1", "2"],
-                "publication_year": [2018, 2019],
+                "difficulty": [2.5, 3.0],
                 "playing_time": [60, 70],
                 "bayesian_avg_rating": [7.5, 7.8],
                 "avg_rating": [7.3, 7.6],
@@ -223,7 +210,7 @@ class TestReRanker:
             "name",
             Columns.FINAL_SCORE,
             Columns.COSINE_SIMILARITY,
-            Columns.NORM_YEAR_SIMILARITY,
+            Columns.NORM_DIFFICULTY_SIMILARITY,
             Columns.NORM_PLAYING_TIME_SIMILARITY,
             Columns.NORM_AVG_RATING,
             Columns.NORM_POPULARITY,
@@ -237,7 +224,7 @@ class TestReRanker:
         reranker = ReRanker()
         weights = {
             "weight_cosine_similarity": 0,
-            "weight_year_similarity": 0,
+            "weight_difficulty_similarity": 0,
             "weight_playing_time_similarity": 0,
             "weight_rating": 1.0,
             "weight_popularity": 0,
@@ -255,7 +242,7 @@ class TestReRanker:
                 "id": ["2", "3"],
                 "name": ["Candidate 1", "Candidate 2"],
                 "cosine_distance": [0.1, 0.2],
-                "publication_year": [2017, 2019],
+                "difficulty": [2.3, 2.8],
                 "playing_time": [55, 70],
                 "bayesian_avg_rating": [0, 0],  # Zero bayesian ratings
                 "avg_rating": [7.6, 7.0],
@@ -278,7 +265,7 @@ class TestReRanker:
         reranker = ReRanker()
         features = reranker._extract_features(sample_input_game)
 
-        assert Columns.PUBLICATION_YEAR in features
+        assert Columns.DIFFICULTY in features
         assert Columns.PLAYING_TIME in features
         assert Columns.BAYESIAN_RATING in features
         assert Columns.POPULARITY_SCORE in features
@@ -290,7 +277,7 @@ class TestReRanker:
         # All weight on cosine similarity
         weights_cosine = {
             "weight_cosine_similarity": 1.0,
-            "weight_year_similarity": 0,
+            "weight_difficulty_similarity": 0,
             "weight_playing_time_similarity": 0,
             "weight_rating": 0,
             "weight_popularity": 0,
@@ -303,7 +290,7 @@ class TestReRanker:
         # All weight on popularity
         weights_pop = {
             "weight_cosine_similarity": 0,
-            "weight_year_similarity": 0,
+            "weight_difficulty_similarity": 0,
             "weight_playing_time_similarity": 0,
             "weight_rating": 0,
             "weight_popularity": 1.0,

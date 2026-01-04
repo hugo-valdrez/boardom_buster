@@ -44,14 +44,17 @@ async def get_recommendations(
 
         # Get recommendations
         results = recommender.recommend(
-            game_id=str(payload.game_id), weights=payload.weights, top_k=payload.top_k
+            game_id=str(payload.game_id),
+            weights=payload.weights,
+            top_k=payload.top_k,
+            exclude_same_family=payload.exclude_same_family,
         )
         recommendations = [
             GameResponse(
                 name=row["name"],
                 match_score=row["final_score"],
                 cosine_similarity=row["cosine_similarity"],
-                year_similarity=row["normalized_year_similarity"],
+                difficulty_similarity=row["normalized_difficulty_similarity"],
                 playing_time_similarity=row["normalized_playing_time_similarity"],
                 avg_rating=row["normalized_avg_rating"],
                 popularity=row["normalized_popularity"],
@@ -68,5 +71,6 @@ async def get_recommendations(
         return RecommendationResponse(input_game=input_game, recommendations=recommendations)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except Exception:
+    except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail="An unexpected error occurred")

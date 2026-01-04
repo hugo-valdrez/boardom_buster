@@ -1,5 +1,3 @@
-import asyncio
-
 from fastapi import APIRouter, BackgroundTasks
 
 from src.app.dependencies import state
@@ -24,5 +22,5 @@ async def run_ingestion_pipeline():
 @router.post("/ingest")
 async def trigger_ingestion(background_tasks: BackgroundTasks):
     """Trigger the ingestion pipeline in the background."""
-    background_tasks.add_task(asyncio.create_task, run_ingestion_pipeline())
+    background_tasks.add_task(run_ingestion_pipeline)
     return {"status": "Ingestion pipeline started in background"}
