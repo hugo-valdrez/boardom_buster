@@ -20,7 +20,7 @@ class TestRecommenderState:
     def test_initialize(self, mock_recommender_class):
         """Test the initialize method creates and loads recommender."""
         mock_recommender = Mock()
-        mock_recommender._knn._df = [1, 2, 3]  # Mock list for len()
+        mock_recommender._knn._df = [1, 2, 3]
         mock_recommender._knn.df_size = 3
         mock_recommender_class.return_value = mock_recommender
 
@@ -54,10 +54,13 @@ class TestGetRecommender:
         """Test that get_recommender returns the state's recommender."""
         mock_recommender = Mock(spec=BoardGameRecommender)
         original_recommender = state.recommender
+        original_initialized = state._initialized
 
         try:
             state.recommender = mock_recommender
+            state._initialized = True  # Prevent lazy loading
             result = get_recommender()
             assert result == mock_recommender
         finally:
             state.recommender = original_recommender
+            state._initialized = original_initialized
