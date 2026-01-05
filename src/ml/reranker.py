@@ -304,7 +304,7 @@ class ReRanker:
         """Return list of columns to include in output."""
         return [
             Columns.GAME_ID,
-            "name",  # Include game name for display
+            "name",
             Columns.FINAL_SCORE,
             Columns.COSINE_SIMILARITY,
             Columns.NORM_DIFFICULTY_SIMILARITY,

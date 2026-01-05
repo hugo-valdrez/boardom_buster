@@ -1,7 +1,21 @@
 [project]
 name = "boardom_buster"
 version = "0.1.0"
+description = "A board game recommendation system using BGG API and KNN"
+readme = "README.md"
 requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Hugo"}
+]
+keywords = ["board-games", "machine-learning"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+]
 dependencies = [
     "fastapi",
     "uvicorn",

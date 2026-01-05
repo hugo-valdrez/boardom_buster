@@ -20,7 +20,7 @@ etl:
     filters:
       num_ratings_threshold: 30
       categories_threshold: 1000
-      mechanics_threshold: 81
+      mechanics_threshold: 80
       min_playing_time: 0.0
       max_playing_time: 360.0
 

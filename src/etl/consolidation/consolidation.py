@@ -31,6 +31,7 @@ def consolidation():
     output_config = settings.ETL["output"]
 
     transformations = [
+        # Change column types
         Transform_ColumnTypes(columns=column_types),
         # Clean HTML entities from description
         Transform_CleanHtmlEntities(col="description"),
@@ -63,7 +64,6 @@ def consolidation():
             min_val=filters["min_playing_time"],
             max_val=filters["max_playing_time"],
         ),
-        # Transform_NormalizeColumn(col="playing_time", filter_column="to_recommend", value=1),
         # Filter publication year
         Filter_RowsNullEmpty(col="publication_year"),
         # Normalize min age
@@ -84,8 +84,10 @@ def consolidation():
             filter_column="to_recommend",
             value=1,
         ),
+        # One hot encode listed columns
         Create_OneHotFromList(col="categories"),
         Create_OneHotFromList(col="mechanics"),
+        # Create bgg link from column "id"
         Create_BGGLink(col="id"),
         # Filter difficulty
         Filter_RowsNullEmpty(col="difficulty"),

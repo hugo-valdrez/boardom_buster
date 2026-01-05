@@ -42,12 +42,6 @@ class BoardGameRecommender:
         df = writer_reader.read()
         print(f"  - Loaded {len(df)} games from parquet file")
 
-        # Memory optimization: truncate long text fields that aren't needed for ML
-        # Keep first 300 chars of description for display purposes
-        if "description" in df.columns:
-            print("  - Truncating descriptions to save memory...")
-            df = df.with_columns(pl.col("description").str.slice(0, 300).alias("description"))
-
         return self.fit(df)
 
     def fit(self, df: pl.DataFrame) -> "BoardGameRecommender":
@@ -68,7 +62,6 @@ class BoardGameRecommender:
     def recommend(
         self,
         game_id: str,
-        n_candidates: Optional[int] = None,
         top_k: Optional[int] = None,
         weights: Optional[dict] = None,
         exclude_same_family: bool = True,
@@ -77,7 +70,6 @@ class BoardGameRecommender:
 
         Args:
             game_id: The ID of the input game.
-            n_candidates: Number of KNN candidates to consider. Defaults to config.
             top_k: Number of final recommendations. Defaults to reranker config.
             weights: Custom weights for reranking. Defaults to reranker config.
             exclude_same_family: If True, exclude games that share any family with the input game.
@@ -93,7 +85,7 @@ class BoardGameRecommender:
             raise RuntimeError("Recommender not fitted. Call fit() or load_data() first.")
 
         # Get KNN candidates
-        candidates = self._knn.get_candidates(game_id, n_candidates, exclude_same_family)
+        candidates = self._knn.get_candidates(game_id, exclude_same_family)
 
         # Get input game for re-ranking context
         input_game = self._knn.get_input_game(game_id)
@@ -103,11 +95,13 @@ class BoardGameRecommender:
         weights = weights or self._reranker.config.to_dict()
         result = self._reranker.rerank(input_game, candidates, top_k, weights)
 
-        # Join additional columns from candidates
+        # Join additional columns from candidates while preserving order
         additional_cols = candidates.select(
             ["id", "mechanics", "categories", "bgg_link", "image_url", "description"]
         )
-        result = result.join(additional_cols, on="id", how="left")
+        result = result.with_row_index("__order__")
+        result = result.join(additional_cols, on="id", how="inner")
+        result = result.sort("__order__").drop("__order__")
 
         # Generate comments for top performers in each category
         result = self._add_comments(result)

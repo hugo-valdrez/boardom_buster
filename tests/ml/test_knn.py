@@ -112,9 +112,9 @@ class TestKNNCandidateGenerator:
         knn = KNNCandidateGenerator()
         knn.fit(sample_game_data)
 
-        candidates = knn.get_candidates("1", n_candidates=2)
+        candidates = knn.get_candidates("1")
 
-        assert candidates.height <= 2
+        assert candidates.height >= 1
         assert "cosine_distance" in candidates.columns
         # Should not include the input game itself
         assert "1" not in candidates["id"].to_list()
@@ -124,7 +124,7 @@ class TestKNNCandidateGenerator:
         knn = KNNCandidateGenerator()
         knn.fit(sample_game_data)
 
-        candidates = knn.get_candidates("2", n_candidates=3)
+        candidates = knn.get_candidates("2")
 
         assert "2" not in candidates["id"].to_list()
 
@@ -133,7 +133,7 @@ class TestKNNCandidateGenerator:
         knn = KNNCandidateGenerator()
         knn.fit(sample_game_data)
 
-        candidates = knn.get_candidates("1", n_candidates=10)
+        candidates = knn.get_candidates("1")
 
         # Game 5 has to_recommend=0, should not be in candidates
         assert "5" not in candidates["id"].to_list()
@@ -165,21 +165,21 @@ class TestKNNCandidateGenerator:
             knn.get_candidates("1")
 
     def test_get_candidates_with_custom_n(self, sample_game_data):
-        """Test getting specific number of candidates."""
+        """Test getting candidates with config n_neighbors."""
         knn = KNNCandidateGenerator()
         knn.fit(sample_game_data)
 
-        # Disable family exclusion to ensure we get the requested number
-        candidates = knn.get_candidates("1", n_candidates=1, exclude_same_family=False)
+        # Disable family exclusion
+        candidates = knn.get_candidates("1", exclude_same_family=False)
 
-        assert candidates.height == 1
+        assert candidates.height >= 1
 
     def test_cosine_distances_in_range(self, sample_game_data):
         """Test that cosine distances are in valid range [0, 2]."""
         knn = KNNCandidateGenerator()
         knn.fit(sample_game_data)
 
-        candidates = knn.get_candidates("1", n_candidates=2)
+        candidates = knn.get_candidates("1")
 
         distances = candidates["cosine_distance"].to_list()
         assert all(0 <= d <= 2 for d in distances)
@@ -197,7 +197,7 @@ class TestKNNCandidateGenerator:
         knn.fit(sample_game_data)
 
         # Game 1 and Game 2 share "Game: Catan" family
-        candidates = knn.get_candidates("1", n_candidates=3)
+        candidates = knn.get_candidates("1")
 
         # Game 2 should not be in candidates (same family)
         assert "2" not in candidates["id"].to_list()
@@ -208,7 +208,7 @@ class TestKNNCandidateGenerator:
         knn.fit(sample_game_data)
 
         # Game 1 and Game 2 share "Game: Catan" family
-        candidates = knn.get_candidates("1", n_candidates=3, exclude_same_family=False)
+        candidates = knn.get_candidates("1", exclude_same_family=False)
 
         # Game 2 should be in candidates when family exclusion is disabled
         assert "2" in candidates["id"].to_list()
@@ -219,7 +219,7 @@ class TestKNNCandidateGenerator:
         knn.fit(sample_game_data)
 
         # Game 3 has empty family, should include all recommendable games
-        candidates = knn.get_candidates("3", n_candidates=3)
+        candidates = knn.get_candidates("3")
 
         # Should not exclude any games based on family
         assert candidates.height >= 1
@@ -230,7 +230,7 @@ class TestKNNCandidateGenerator:
         knn.fit(sample_game_data)
 
         # Game 1 (Catan) and Game 4 (Ticket to Ride) have different families
-        candidates = knn.get_candidates("1", n_candidates=3)
+        candidates = knn.get_candidates("1")
 
         # Game 4 should be in candidates (different family)
         assert "4" in candidates["id"].to_list()
