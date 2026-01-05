@@ -305,7 +305,7 @@ function renderSelectedGameCard(game) {
              alt="${escapeHtml(game.name)}"
              onerror="this.src='data:image/svg+xml,' + encodeURIComponent(getPlaceholderSvg())">
         <div class="selected-game-name">${escapeHtml(game.name)}</div>
-        ${description ? `<div class="selected-game-description">${escapeHtml(truncateText(description, 300))}</div>` : ''}
+        ${description ? `<div class="selected-game-description">${escapeHtml(truncateText(description, 200))}</div>` : ''}
         ${categories.length > 0 ? `
             <div class="selected-game-meta">
                 <div class="selected-game-meta-label">Categories:</div>

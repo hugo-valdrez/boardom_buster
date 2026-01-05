@@ -79,9 +79,9 @@ ml:
       - "difficulty"
 
   reranker:
-    weight_cosine_similarity: 0.30
-    weight_difficulty_similarity: 0.25
+    weight_cosine_similarity: 0.40
+    weight_difficulty_similarity: 0.20
     weight_playing_time_similarity: 0.10
-    weight_rating: 0.20
+    weight_rating: 0.15
     weight_popularity: 0.15
     top_k: 5

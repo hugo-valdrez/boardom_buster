@@ -26,14 +26,14 @@ class ReRankerConfig:
         top_k: Number of recommendations to return
     """
 
-    weight_cosine_similarity: float = _RERANKER_DEFAULTS.get("weight_cosine_similarity", 0.30)
+    weight_cosine_similarity: float = _RERANKER_DEFAULTS.get("weight_cosine_similarity", 0.40)
     weight_difficulty_similarity: float = _RERANKER_DEFAULTS.get(
-        "weight_difficulty_similarity", 0.25
+        "weight_difficulty_similarity", 0.20
     )
     weight_playing_time_similarity: float = _RERANKER_DEFAULTS.get(
         "weight_playing_time_similarity", 0.10
     )
-    weight_rating: float = _RERANKER_DEFAULTS.get("weight_rating", 0.20)
+    weight_rating: float = _RERANKER_DEFAULTS.get("weight_rating", 0.15)
     weight_popularity: float = _RERANKER_DEFAULTS.get("weight_popularity", 0.15)
     top_k: int = _RERANKER_DEFAULTS.get("top_k", 5)
 
