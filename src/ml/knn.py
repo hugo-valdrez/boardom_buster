@@ -81,7 +81,7 @@ class KNNCandidateGenerator:
         )
         self._model: Optional[NearestNeighbors] = None
         self._df: Optional[pl.DataFrame] = None  # All games (single source of truth)
-        self._recommendable_mask: Optional[pl.Series] = None  # Boolean mask for recommendable games
+        self._recommendable_mask: Optional[pl.Series] = None  # Mask for recommendable games
         self._feature_columns: Optional[List[str]] = None
         self._id_to_idx: dict = {}  # Maps game_id to index in all games
         self._idx_to_id: dict = {}  # Maps index to game_id in all games
@@ -111,7 +111,7 @@ class KNNCandidateGenerator:
         self._idx_to_id = {idx: game_id for idx, game_id in enumerate(ids)}
 
         # Extract feature matrix
-        feature_matrix = self._df.select(self._feature_columns).to_numpy().astype(np.float16)
+        feature_matrix = self._df.select(self._feature_columns).to_numpy().astype(np.float32)
 
         # Fit the KNN model
         self._model = NearestNeighbors(
@@ -131,30 +131,14 @@ class KNNCandidateGenerator:
             if col in self.excluded_columns:
                 continue
 
-            # Only include numeric columns
-            dtype = df.schema[col]
-            if dtype in [
-                pl.Float32,
-                pl.Float64,
-                pl.Int8,
-                pl.Int16,
-                pl.Int32,
-                pl.Int64,
-                pl.UInt8,
-                pl.UInt16,
-                pl.UInt32,
-                pl.UInt64,
-            ]:
-                feature_cols.append(col)
+            feature_cols.append(col)
 
         if not feature_cols:
             raise ValueError("No feature columns detected. Check your data.")
 
         return feature_cols
 
-    def get_candidates(
-        self, game_id: str, n_candidates: Optional[int] = None, exclude_same_family: bool = True
-    ) -> pl.DataFrame:
+    def get_candidates(self, game_id: str, exclude_same_family: bool = True) -> pl.DataFrame:
         """Get KNN candidates for a given game.
 
         The input game can be any game in the dataset (to_recommend=0 or 1),
@@ -162,7 +146,6 @@ class KNNCandidateGenerator:
 
         Args:
             game_id: The ID of the input game.
-            n_candidates: Number of candidates to return. Defaults to config.n_neighbors.
             exclude_same_family: If True, exclude games that share any family with the input game.
                 Defaults to True.
 
@@ -173,7 +156,7 @@ class KNNCandidateGenerator:
         # Get input game from full dataset (can be any game)
         input_game = self.get_input_game(game_id)
 
-        n_candidates = n_candidates or self.config.n_neighbors
+        n_candidates = self.config.n_neighbors
 
         # Get input game's families for filtering (if needed)
         input_families: set = set()
@@ -184,7 +167,7 @@ class KNNCandidateGenerator:
 
         # Get the feature vector for the input game
         input_features = input_game.select(self._feature_columns).row(0)
-        input_vector = np.array(input_features, dtype=np.float16).reshape(1, -1)
+        input_vector = np.array(input_features, dtype=np.float32).reshape(1, -1)
 
         # Find nearest neighbors (from recommendable games only)
         distances, indices = self._model.kneighbors(
@@ -241,7 +224,7 @@ class KNNCandidateGenerator:
         ]
 
         candidates = candidates.with_columns(
-            pl.Series("cosine_distance", distance_series, dtype=pl.Float64)
+            pl.Series("cosine_distance", distance_series, dtype=pl.Float32)
         )
 
         return candidates

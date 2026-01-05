@@ -95,7 +95,7 @@ class TestFilter_ListElements:
 
     def test_filter_list_elements_basic(self):
         """Test filtering list elements below threshold."""
-        df = pl.DataFrame({"items": [["A", "B"], ["B", "C"], ["A", "D"]]})
+        df = pl.DataFrame({"id": [1, 2, 3], "items": [["A", "B"], ["B", "C"], ["A", "D"]]})
         transformation = Filter_ListElements(col="items", threshold=2)
 
         result = transformation.transform(df)
@@ -111,14 +111,14 @@ class TestFilter_ListElements:
 
     def test_filter_list_elements_removes_rows(self):
         """Test that rows with only rare elements are removed."""
-        df = pl.DataFrame({"items": [["A"], ["A"], ["B"]], "id": [1, 2, 3]})
+        df = pl.DataFrame({"id": [1, 2, 3], "items": [["A"], ["A"], ["B"]]})
         transformation = Filter_ListElements(col="items", threshold=2)
 
         result = transformation.transform(df)
 
         # Only rows with "A" should remain
         assert result.height == 2
-        assert result["id"].to_list() == [1, 2]
+        assert sorted(result["id"].to_list()) == [1, 2]
 
 
 class TestCreate_ConstantColumn:
@@ -314,7 +314,7 @@ class TestTransform_ColumnTypes:
         result = transformation.transform(df)
 
         assert result.schema["int_col"] == pl.Int64
-        assert result.schema["float_col"] == pl.Float64
+        assert result.schema["float_col"] == pl.Float32
         assert result.schema["str_col"] == pl.Utf8
 
 

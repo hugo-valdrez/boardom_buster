@@ -20,7 +20,7 @@ etl:
     filters:
       num_ratings_threshold: 30
       categories_threshold: 1000
-      mechanics_threshold: 81
+      mechanics_threshold: 80
       min_playing_time: 0.0
       max_playing_time: 360.0
 
@@ -79,9 +79,9 @@ ml:
       - "difficulty"
 
   reranker:
-    weight_cosine_similarity: 0.30
-    weight_difficulty_similarity: 0.25
+    weight_cosine_similarity: 0.40
+    weight_difficulty_similarity: 0.20
     weight_playing_time_similarity: 0.10
-    weight_rating: 0.20
+    weight_rating: 0.15
     weight_popularity: 0.15
     top_k: 5

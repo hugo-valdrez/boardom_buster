@@ -52,15 +52,13 @@ class Filter_ListElements(BaseTransformation):
             .select(self.col)
         )
 
-        df_with_idx = df.with_row_index("__row_id")
-        other_cols = [c for c in df.columns if c != self.col]
+        other_cols = [c for c in df.columns if c != self.col and c != "id"]
 
         df_clean = (
-            df_with_idx.explode(self.col)
+            df.explode(self.col)
             .join(valid, on=self.col, how="inner")
-            .group_by("__row_id")
+            .group_by("id")
             .agg([pl.col(self.col)] + [pl.col(c).first() for c in other_cols])
-            .drop("__row_id")
         )
 
         return df_clean
@@ -194,7 +192,7 @@ class Transform_ColumnTypes(BaseTransformation):
 
     TYPE_MAP = {
         "int": pl.Int64,
-        "float": pl.Float64,
+        "float": pl.Float32,
         "str": pl.Utf8,
         "bool": pl.Boolean,
     }
@@ -247,8 +245,8 @@ class Transform_NormalizeColumn(BaseTransformation):
 
 class Transform_ClipValues(BaseTransformation):
     def __init__(self, col: str, min_val: float = None, max_val: float = None):
-        """
-        Clips values to stay within a specific range.
+        """Clips values to stay within a specific range.
+
         Any value above max_val becomes max_val.
         Any value below min_val becomes min_val.
         """

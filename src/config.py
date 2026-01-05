@@ -7,7 +7,6 @@ from pydantic_settings import BaseSettings
 
 PROJECT_ROOT = Path(__file__).parent.parent
 
-# Load environment variables from .env file
 load_dotenv(PROJECT_ROOT / ".env")
 
 
