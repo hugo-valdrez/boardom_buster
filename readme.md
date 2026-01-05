@@ -13,13 +13,23 @@ A machine learning-based recommendation engine for board games. The system fetch
 ## Features
 
 - Automated data ingestion from the BoardGameGeek XML API
-- Data cleaning and feature engineering pipeline with Min-Max normalization
+- Data cleaning and feature engineering pipeline
 - K-Nearest Neighbors model for similarity-based recommendations
-- Re-ranking system with weighted metrics for improved recommendation quality
+- Re-ranking system with weighted metrics
 - RESTful API built with FastAPI
 - Web-based user interface for interactive recommendations
 - Docker support for containerized deployment
 - Comprehensive test suite
+
+## To Do
+
+- [ ] Implement a feedback system: Did you like this game? Why or why not?
+- [ ] Develop a mobile version of the application
+- [ ] Experiment with embeddings for game description similarity
+- [ ] Ensure the endpoints are secure:
+  - [ ] Add authentication
+  - [ ] Add rate limiting
+  - [ ] Add input sanitation (top_k, game_id)
 
 ## Technical Architecture
 
